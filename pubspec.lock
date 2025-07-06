@@ -41,6 +41,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.2"
+  chess:
+    dependency: transitive
+    description:
+      name: chess
+      sha256: "6e5a8222931bfb5cd14a4bb9b030c24e257e23957ec3c533fb0ff74a48984ddb"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.8.1"
   cli_config:
     dependency: transitive
     description:
@@ -81,6 +89,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.6"
+  dart_torch:
+    dependency: "direct main"
+    description:
+      name: dart_torch
+      sha256: "094f323edbdf183b0e69329e28e674ee702b2ef5c8194facedb5f5d0f3aa62b8"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.1"
   file:
     dependency: transitive
     description:
@@ -337,6 +353,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.0"
+  vector_math:
+    dependency: transitive
+    description:
+      name: vector_math
+      sha256: d530bd74fea330e6e364cda7a85019c434070188383e1cd8d9777ee586914c5b
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.2.0"
   vm_service:
     dependency: transitive
     description:

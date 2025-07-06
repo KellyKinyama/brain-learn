@@ -9,8 +9,8 @@ import 'defs.dart';
 import 'board.dart';
 import 'hash.dart';
 import 'move.dart';
-import 'move_gen.dart'; // For movegen, isOwnKingAttacked, isOtherKingAttacked
-import 'make_move.dart'; // For makeMove, unmakeMove
+import 'move_gen3.dart'; // For movegen, isOwnKingAttacked, isOtherKingAttacked
+import 'make_move2.dart'; // For makeMove, unmakeMove
 import 'eval.dart'; // For eval()
 import 'qsearch.dart'; // For qsearch()
 import 'peek.dart'; // For readClockAndInput()
@@ -61,7 +61,11 @@ Move think() {
   }
 
   // Iterative Deepening Loop
-  for (int currentDepth = 1; currentDepth <= board.searchDepth; currentDepth++) {
+  for (
+    int currentDepth = 1;
+    currentDepth <= board.searchDepth;
+    currentDepth++
+  ) {
     // Reset timeout flag for each iteration
     board.timedout = false;
     board.countdown = UPDATEINTERVAL; // Reset countdown for input/time checks
@@ -91,7 +95,11 @@ Move think() {
     }
 
     // Display search stats
-    displaySearchStats(1, currentDepth, score); // Mode 1 for iterative deepening
+    displaySearchStats(
+      1,
+      currentDepth,
+      score,
+    ); // Mode 1 for iterative deepening
 
     // Check if we should stop searching (e.g., time limit, mate found)
     // The C++ code checks `STOPFRAC` and `CHECKMATESCORE`.
@@ -143,22 +151,31 @@ int alphabetapvs(int ply, int depth, int alpha, int beta) {
   }
 
   // Check for repetition (draw)
-  if (board.repetitionCount() >= 2) { // 2 repetitions for draw
+  if (board.repetitionCount() >= 2) {
+    // 2 repetitions for draw
     return DRAWSCORE;
   }
 
   // Null move pruning (if allowed and not in check)
   // This is an optimization where we skip a move for the current side
   // and search the opponent's response at a reduced depth.
-  if (board.allownull && !isOwnKingAttacked() && board.Material.abs() > NULLMOVE_LIMIT) {
+  if (board.allownull &&
+      !isOwnKingAttacked() &&
+      board.Material.abs() > NULLMOVE_LIMIT) {
     // Make a null move (pass the turn)
     board.nextMove = (board.nextMove == WHITE_MOVE) ? BLACK_MOVE : WHITE_MOVE;
     board.hashkey ^= KEY.side; // Update hash for side to move
     board.epSquare = 0; // Null move clears EP square
-    board.hashkey ^= KEY.ep[board.epSquare]; // Update hash for EP square (if it was set)
+    board.hashkey ^=
+        KEY.ep[board.epSquare]; // Update hash for EP square (if it was set)
 
     board.allownull = false; // Don't allow consecutive null moves
-    int val = -alphabetapvs(ply + 1, depth - NULLMOVE_REDUCTION - 1, -beta, -beta + 1);
+    int val = -alphabetapvs(
+      ply + 1,
+      depth - NULLMOVE_REDUCTION - 1,
+      -beta,
+      -beta + 1,
+    );
     board.allownull = true; // Restore null move allowance
 
     // Unmake the null move
@@ -166,7 +183,9 @@ int alphabetapvs(int ply, int depth, int alpha, int beta) {
     board.hashkey ^= KEY.side;
     // Restore epSquare (from gameLine, if needed, or by re-calculating)
     // For now, just reset it to 0 as it was cleared.
-    board.epSquare = board.gameLine[board.endOfGame - 1].epSquare; // Restore from previous record
+    board.epSquare = board
+        .gameLine[board.endOfGame - 1]
+        .epSquare; // Restore from previous record
     board.hashkey ^= KEY.ep[board.epSquare]; // Update hash for EP square
 
     if (val >= beta) {
@@ -211,7 +230,12 @@ int alphabetapvs(int ply, int depth, int alpha, int beta) {
     } else {
       // Zero-window search (scout search) for subsequent moves
       // If this search fails high, we re-search with a full window.
-      val = -alphabetapvs(ply + 1, depth - 1, -alpha - 1, -alpha); // Test if it's better than alpha
+      val = -alphabetapvs(
+        ply + 1,
+        depth - 1,
+        -alpha - 1,
+        -alpha,
+      ); // Test if it's better than alpha
       if (val > alpha && val < beta) {
         // If it was a "fail high" (i.e., better than alpha), re-search with full window
         val = -alphabetapvs(ply + 1, depth - 1, -beta, -alpha);
@@ -226,9 +250,11 @@ int alphabetapvs(int ply, int depth, int alpha, int beta) {
       // Store in history heuristic (if non-capture)
       if (!currentMove.isCapture()) {
         if (board.nextMove == WHITE_MOVE) {
-          board.whiteHeuristics[currentMove.getFrom()][currentMove.getTosq()] += depth * depth;
+          board.whiteHeuristics[currentMove.getFrom()][currentMove.getTosq()] +=
+              depth * depth;
         } else {
-          board.blackHeuristics[currentMove.getFrom()][currentMove.getTosq()] += depth * depth;
+          board.blackHeuristics[currentMove.getFrom()][currentMove.getTosq()] +=
+              depth * depth;
         }
       }
       return val;
@@ -346,7 +372,12 @@ int alphabeta(int ply, int depth, int alpha, int beta) {
       return 0;
     }
 
-    int val = -alphabeta(ply + 1, depth - 1, -beta, -alpha); // Negamax formulation
+    int val = -alphabeta(
+      ply + 1,
+      depth - 1,
+      -beta,
+      -alpha,
+    ); // Negamax formulation
 
     unmakeMove(currentMove);
 
@@ -384,7 +415,9 @@ void displaySearchStats(int mode, int depth, int score) {
       pvString += "${board.lastPV[i].toString()} ";
     }
 
-    print("info depth $depth score $scoreStr nodes ${board.inodes} time ${board.timer.getms()} pv $pvString");
+    print(
+      "info depth $depth score $scoreStr nodes ${board.inodes} time ${board.timer.getms()} pv $pvString",
+    );
   }
   // Add other display modes if necessary
 }
@@ -399,7 +432,8 @@ BOOLTYPE isEndOfgame(int legalmoves, Move singlemove) {
     return true; // Checkmate or Stalemate
   }
   // Check for 50-move rule draw
-  if (board.fiftyMove >= 100) { // 100 half-moves = 50 full moves
+  if (board.fiftyMove >= 100) {
+    // 100 half-moves = 50 full moves
     return true;
   }
   // Check for three-fold repetition draw
@@ -417,7 +451,11 @@ int repetitionCount() {
   // Iterate through the gameLine (history) and compare hash keys.
   // The C++ code checks from `endOfGame - 2` down to `0`, skipping every other ply.
   // It also considers the 50-move rule limit.
-  for (int i = board.endOfGame - 2; i >= 0 && board.gameLine[i].fiftyMove < board.fiftyMove; i -= 2) {
+  for (
+    int i = board.endOfGame - 2;
+    i >= 0 && board.gameLine[i].fiftyMove < board.fiftyMove;
+    i -= 2
+  ) {
     if (board.gameLine[i].key == board.hashkey) {
       count++;
     }

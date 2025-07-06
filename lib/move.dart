@@ -200,6 +200,22 @@ class Move {
 
     return '$pieceChar$fromSq$capturedChar$toSq$promotionChar';
   }
+
+  String toAlgebraic() {
+    // A simplified toString for now. A full SAN conversion would be complex.
+    String pieceChar = PIECECHARS[getPiec()];
+    String fromSq = SQUARENAME[getFrom()];
+    String toSq = SQUARENAME[getTosq()];
+    String promotionChar =
+        isPromotion() && !(pieceChar == 'K' || pieceChar == 'k')
+        ? '=${PIECECHARS[getProm()]}'
+        : '';
+
+    if (isCastleOO()) return 'O-O';
+    if (isCastleOOO()) return 'O-O-O';
+
+    return '$fromSq$toSq$promotionChar';
+  }
 }
 
 // Global NOMOVE instance (from kennyGlobals.h)

@@ -485,6 +485,38 @@ class Board {
     // Checks for time limits and user input during search.
   }
 
+  /// Gets the appropriate bitboard for a given piece type.
+  BitMap getBitboardForPiece(int piece) {
+    switch (piece) {
+      case WHITE_PAWN:
+        return whitePawns;
+      case WHITE_KNIGHT:
+        return whiteKnights;
+      case WHITE_BISHOP:
+        return whiteBishops;
+      case WHITE_ROOK:
+        return whiteRooks;
+      case WHITE_QUEEN:
+        return whiteQueens;
+      case WHITE_KING:
+        return whiteKing;
+      case BLACK_PAWN:
+        return blackPawns;
+      case BLACK_KNIGHT:
+        return blackKnights;
+      case BLACK_BISHOP:
+        return blackBishops;
+      case BLACK_ROOK:
+        return blackRooks;
+      case BLACK_QUEEN:
+        return blackQueens;
+      case BLACK_KING:
+        return blackKing;
+      default:
+        return 0;
+    }
+  }
+
   // @override
   // String toString() {
   //   // TODO: implement toString

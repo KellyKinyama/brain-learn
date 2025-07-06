@@ -62,11 +62,13 @@ void makeMove(Move move) {
   // If a piece moves from A1, H1, E1, A8, H8, E8, castling rights might change.
   if (from == A1 || to == A1) board.castleWhite &= ~CANCASTLEOOO;
   if (from == H1 || to == H1) board.castleWhite &= ~CANCASTLEOO;
-  if (from == E1) board.castleWhite = 0; // King moves, lose all white castling rights
+  if (from == E1)
+    board.castleWhite = 0; // King moves, lose all white castling rights
 
   if (from == A8 || to == A8) board.castleBlack &= ~CANCASTLEOOO;
   if (from == H8 || to == H8) board.castleBlack &= ~CANCASTLEOO;
-  if (from == E8) board.castleBlack = 0; // King moves, lose all black castling rights
+  if (from == E8)
+    board.castleBlack = 0; // King moves, lose all black castling rights
 
   // Add new castling rights hash keys (after updates)
   if ((board.castleWhite & CANCASTLEOO) != 0) board.hashkey ^= KEY.wk;
@@ -91,9 +93,11 @@ void makeMove(Move move) {
     board.hashkey ^= KEY.keys[to][captured]; // XOR out captured piece hash
     board.Material -= PIECEVALUES[captured]; // Update material
     if (captured == BLACK_PAWN) board.totalBlackPawns -= PAWN_VALUE;
-    if (captured >= BLACK_KNIGHT && captured <= BLACK_QUEEN) board.totalBlackPieces -= PIECEVALUES[captured];
+    if (captured >= BLACK_KNIGHT && captured <= BLACK_QUEEN)
+      board.totalBlackPieces -= PIECEVALUES[captured];
     if (captured == WHITE_PAWN) board.totalWhitePawns -= PAWN_VALUE;
-    if (captured >= WHITE_KNIGHT && captured <= WHITE_QUEEN) board.totalWhitePieces -= PIECEVALUES[captured];
+    if (captured >= WHITE_KNIGHT && captured <= WHITE_QUEEN)
+      board.totalWhitePieces -= PIECEVALUES[captured];
   }
 
   // Handle specific move types
@@ -105,7 +109,8 @@ void makeMove(Move move) {
     // Remove captured pawn from its actual square (not 'to' square)
     int capturedPawnSq = (piece == WHITE_PAWN) ? (to - 8) : (to + 8);
     board.square[capturedPawnSq] = EMPTY;
-    board.hashkey ^= KEY.keys[capturedPawnSq][captured]; // XOR out captured pawn hash
+    board.hashkey ^=
+        KEY.keys[capturedPawnSq][captured]; // XOR out captured pawn hash
     board.Material -= PIECEVALUES[captured];
     if (captured == BLACK_PAWN) board.totalBlackPawns -= PAWN_VALUE;
     if (captured == WHITE_PAWN) board.totalWhitePawns -= PAWN_VALUE;
@@ -131,7 +136,8 @@ void makeMove(Move move) {
     board.square[rookTo] = rookPiece;
   } else if (move.isPromotion()) {
     // Handle promotion: remove pawn, add promoted piece
-    board.hashkey ^= KEY.keys[to][piece]; // XOR out pawn (already moved to 'to')
+    board.hashkey ^=
+        KEY.keys[to][piece]; // XOR out pawn (already moved to 'to')
     board.Material -= PIECEVALUES[piece]; // Remove pawn material
     if (piece == WHITE_PAWN) board.totalWhitePawns -= PAWN_VALUE;
     if (piece == BLACK_PAWN) board.totalBlackPawns -= PAWN_VALUE;
@@ -139,8 +145,10 @@ void makeMove(Move move) {
     board.square[to] = promotion;
     board.hashkey ^= KEY.keys[to][promotion]; // XOR in promoted piece hash
     board.Material += PIECEVALUES[promotion]; // Add promoted piece material
-    if (promotion >= WHITE_KNIGHT && promotion <= WHITE_QUEEN) board.totalWhitePieces += PIECEVALUES[promotion];
-    if (promotion >= BLACK_KNIGHT && promotion <= BLACK_QUEEN) board.totalBlackPieces += PIECEVALUES[promotion];
+    if (promotion >= WHITE_KNIGHT && promotion <= WHITE_QUEEN)
+      board.totalWhitePieces += PIECEVALUES[promotion];
+    if (promotion >= BLACK_KNIGHT && promotion <= BLACK_QUEEN)
+      board.totalBlackPieces += PIECEVALUES[promotion];
   }
 
   // Update bitboards based on square array
@@ -159,23 +167,59 @@ void makeMove(Move move) {
 
   for (int i = 0; i < 64; i++) {
     switch (board.square[i]) {
-      case WHITE_PAWN: board.whitePawns |= BITSET[i]; break;
-      case WHITE_KNIGHT: board.whiteKnights |= BITSET[i]; break;
-      case WHITE_BISHOP: board.whiteBishops |= BITSET[i]; break;
-      case WHITE_ROOK: board.whiteRooks |= BITSET[i]; break;
-      case WHITE_QUEEN: board.whiteQueens |= BITSET[i]; break;
-      case WHITE_KING: board.whiteKing |= BITSET[i]; break;
-      case BLACK_PAWN: board.blackPawns |= BITSET[i]; break;
-      case BLACK_KNIGHT: board.blackKnights |= BITSET[i]; break;
-      case BLACK_BISHOP: board.blackBishops |= BITSET[i]; break;
-      case BLACK_ROOK: board.blackRooks |= BITSET[i]; break;
-      case BLACK_QUEEN: board.blackQueens |= BITSET[i]; break;
-      case BLACK_KING: board.blackKing |= BITSET[i]; break;
+      case WHITE_PAWN:
+        board.whitePawns |= BITSET[i];
+        break;
+      case WHITE_KNIGHT:
+        board.whiteKnights |= BITSET[i];
+        break;
+      case WHITE_BISHOP:
+        board.whiteBishops |= BITSET[i];
+        break;
+      case WHITE_ROOK:
+        board.whiteRooks |= BITSET[i];
+        break;
+      case WHITE_QUEEN:
+        board.whiteQueens |= BITSET[i];
+        break;
+      case WHITE_KING:
+        board.whiteKing |= BITSET[i];
+        break;
+      case BLACK_PAWN:
+        board.blackPawns |= BITSET[i];
+        break;
+      case BLACK_KNIGHT:
+        board.blackKnights |= BITSET[i];
+        break;
+      case BLACK_BISHOP:
+        board.blackBishops |= BITSET[i];
+        break;
+      case BLACK_ROOK:
+        board.blackRooks |= BITSET[i];
+        break;
+      case BLACK_QUEEN:
+        board.blackQueens |= BITSET[i];
+        break;
+      case BLACK_KING:
+        board.blackKing |= BITSET[i];
+        break;
     }
   }
 
-  board.whitePieces = board.whitePawns | board.whiteKnights | board.whiteBishops | board.whiteRooks | board.whiteQueens | board.whiteKing;
-  board.blackPieces = board.blackPawns | board.blackKnights | board.blackBishops | board.blackRooks | board.blackQueens | board.blackKing;
+  board.whitePieces =
+      board.whitePawns |
+      board.whiteKnights |
+      board.whiteBishops |
+      board.whiteRooks |
+      board.whiteQueens |
+      board.whiteKing;
+  board.blackPieces =
+      board.blackPawns |
+      board.blackKnights |
+      board.blackBishops |
+      board.blackRooks |
+      board.blackQueens |
+      board.blackKing;
   board.occupiedSquares = board.whitePieces | board.blackPieces;
 
   // Toggle side to move
@@ -185,30 +229,30 @@ void makeMove(Move move) {
   // These checks compare the calculated material and piece counts with actual bitboard counts.
   // They are useful for verifying the correctness of makeMove/unmakeMove.
   // For production, these would typically be removed or conditional.
-  if (bitCnt(board.whitePawns) * PAWN_VALUE +
-          bitCnt(board.whiteKnights) * KNIGHT_VALUE +
-          bitCnt(board.whiteBishops) * BISHOP_VALUE +
-          bitCnt(board.whiteRooks) * ROOK_VALUE +
-          bitCnt(board.whiteQueens) * QUEEN_VALUE !=
-      board.totalWhitePawns + board.totalWhitePieces) {
-    print("Inconsistency in white material after makeMove!");
-    // You might want to display board and move for debugging here
-  }
-  if (bitCnt(board.blackPawns) * PAWN_VALUE +
-          bitCnt(board.blackKnights) * KNIGHT_VALUE +
-          bitCnt(board.blackBishops) * BISHOP_VALUE +
-          bitCnt(board.blackRooks) * ROOK_VALUE +
-          bitCnt(board.blackQueens) * QUEEN_VALUE !=
-      board.totalBlackPawns + board.totalBlackPieces) {
-    print("Inconsistency in black material after makeMove!");
-  }
-  if (board.Material !=
-      (board.totalWhitePawns +
-          board.totalWhitePieces +
-          KING_VALUE - // King value is always there
-          (board.totalBlackPawns + board.totalBlackPieces + KING_VALUE))) {
-    print("Inconsistency in total material after makeMove!");
-  }
+  // if (bitCnt(board.whitePawns) * PAWN_VALUE +
+  //         bitCnt(board.whiteKnights) * KNIGHT_VALUE +
+  //         bitCnt(board.whiteBishops) * BISHOP_VALUE +
+  //         bitCnt(board.whiteRooks) * ROOK_VALUE +
+  //         bitCnt(board.whiteQueens) * QUEEN_VALUE !=
+  //     board.totalWhitePawns + board.totalWhitePieces) {
+  //   print("Inconsistency in white material after makeMove!");
+  //   // You might want to display board and move for debugging here
+  // }
+  // if (bitCnt(board.blackPawns) * PAWN_VALUE +
+  //         bitCnt(board.blackKnights) * KNIGHT_VALUE +
+  //         bitCnt(board.blackBishops) * BISHOP_VALUE +
+  //         bitCnt(board.blackRooks) * ROOK_VALUE +
+  //         bitCnt(board.blackQueens) * QUEEN_VALUE !=
+  //     board.totalBlackPawns + board.totalBlackPieces) {
+  //   print("Inconsistency in black material after makeMove!");
+  // }
+  // if (board.Material !=
+  //     (board.totalWhitePawns +
+  //         board.totalWhitePieces +
+  //         KING_VALUE - // King value is always there
+  //         (board.totalBlackPawns + board.totalBlackPieces + KING_VALUE))) {
+  //   print("Inconsistency in total material after makeMove!");
+  // }
 }
 
 /// Undoes the last move, restoring the board to its previous state.
@@ -274,9 +318,11 @@ void unmakeMove(Move move) {
     board.square[to] = captured;
     board.Material += PIECEVALUES[captured]; // Restore material
     if (captured == BLACK_PAWN) board.totalBlackPawns += PAWN_VALUE;
-    if (captured >= BLACK_KNIGHT && captured <= BLACK_QUEEN) board.totalBlackPieces += PIECEVALUES[captured];
+    if (captured >= BLACK_KNIGHT && captured <= BLACK_QUEEN)
+      board.totalBlackPieces += PIECEVALUES[captured];
     if (captured == WHITE_PAWN) board.totalWhitePawns += PAWN_VALUE;
-    if (captured >= WHITE_KNIGHT && captured <= WHITE_QUEEN) board.totalWhitePieces += PIECEVALUES[captured];
+    if (captured >= WHITE_KNIGHT && captured <= WHITE_QUEEN)
+      board.totalWhitePieces += PIECEVALUES[captured];
   }
 
   // Handle specific move types for unmaking
@@ -284,7 +330,8 @@ void unmakeMove(Move move) {
     // Restore captured pawn at its actual square
     int capturedPawnSq = (piece == WHITE_PAWN) ? (to - 8) : (to + 8);
     board.square[capturedPawnSq] = captured;
-    board.hashkey ^= KEY.keys[capturedPawnSq][captured]; // XOR in captured pawn hash
+    board.hashkey ^=
+        KEY.keys[capturedPawnSq][captured]; // XOR in captured pawn hash
     board.Material += PIECEVALUES[captured];
     if (captured == BLACK_PAWN) board.totalBlackPawns += PAWN_VALUE;
     if (captured == WHITE_PAWN) board.totalWhitePawns += PAWN_VALUE;
@@ -312,8 +359,10 @@ void unmakeMove(Move move) {
     // Unmake promotion: remove promoted piece, restore pawn
     board.hashkey ^= KEY.keys[to][promotion]; // XOR out promoted piece
     board.Material -= PIECEVALUES[promotion]; // Remove promoted piece material
-    if (promotion >= WHITE_KNIGHT && promotion <= WHITE_QUEEN) board.totalWhitePieces -= PIECEVALUES[promotion];
-    if (promotion >= BLACK_KNIGHT && promotion <= BLACK_QUEEN) board.totalBlackPieces -= PIECEVALUES[promotion];
+    if (promotion >= WHITE_KNIGHT && promotion <= WHITE_QUEEN)
+      board.totalWhitePieces -= PIECEVALUES[promotion];
+    if (promotion >= BLACK_KNIGHT && promotion <= BLACK_QUEEN)
+      board.totalBlackPieces -= PIECEVALUES[promotion];
 
     board.square[to] = piece; // Restore pawn at 'to' square
     board.hashkey ^= KEY.keys[to][piece]; // XOR in pawn hash
@@ -338,48 +387,84 @@ void unmakeMove(Move move) {
 
   for (int i = 0; i < 64; i++) {
     switch (board.square[i]) {
-      case WHITE_PAWN: board.whitePawns |= BITSET[i]; break;
-      case WHITE_KNIGHT: board.whiteKnights |= BITSET[i]; break;
-      case WHITE_BISHOP: board.whiteBishops |= BITSET[i]; break;
-      case WHITE_ROOK: board.whiteRooks |= BITSET[i]; break;
-      case WHITE_QUEEN: board.whiteQueens |= BITSET[i]; break;
-      case WHITE_KING: board.whiteKing |= BITSET[i]; break;
-      case BLACK_PAWN: board.blackPawns |= BITSET[i]; break;
-      case BLACK_KNIGHT: board.blackKnights |= BITSET[i]; break;
-      case BLACK_BISHOP: board.blackBishops |= BITSET[i]; break;
-      case BLACK_ROOK: board.blackRooks |= BITSET[i]; break;
-      case BLACK_QUEEN: board.blackQueens |= BITSET[i]; break;
-      case BLACK_KING: board.blackKing |= BITSET[i]; break;
+      case WHITE_PAWN:
+        board.whitePawns |= BITSET[i];
+        break;
+      case WHITE_KNIGHT:
+        board.whiteKnights |= BITSET[i];
+        break;
+      case WHITE_BISHOP:
+        board.whiteBishops |= BITSET[i];
+        break;
+      case WHITE_ROOK:
+        board.whiteRooks |= BITSET[i];
+        break;
+      case WHITE_QUEEN:
+        board.whiteQueens |= BITSET[i];
+        break;
+      case WHITE_KING:
+        board.whiteKing |= BITSET[i];
+        break;
+      case BLACK_PAWN:
+        board.blackPawns |= BITSET[i];
+        break;
+      case BLACK_KNIGHT:
+        board.blackKnights |= BITSET[i];
+        break;
+      case BLACK_BISHOP:
+        board.blackBishops |= BITSET[i];
+        break;
+      case BLACK_ROOK:
+        board.blackRooks |= BITSET[i];
+        break;
+      case BLACK_QUEEN:
+        board.blackQueens |= BITSET[i];
+        break;
+      case BLACK_KING:
+        board.blackKing |= BITSET[i];
+        break;
     }
   }
 
-  board.whitePieces = board.whitePawns | board.whiteKnights | board.whiteBishops | board.whiteRooks | board.whiteQueens | board.whiteKing;
-  board.blackPieces = board.blackPawns | board.blackKnights | board.blackBishops | board.blackRooks | board.blackQueens | board.blackKing;
+  board.whitePieces =
+      board.whitePawns |
+      board.whiteKnights |
+      board.whiteBishops |
+      board.whiteRooks |
+      board.whiteQueens |
+      board.whiteKing;
+  board.blackPieces =
+      board.blackPawns |
+      board.blackKnights |
+      board.blackBishops |
+      board.blackRooks |
+      board.blackQueens |
+      board.blackKing;
   board.occupiedSquares = board.whitePieces | board.blackPieces;
 
   // Debugging checks (from C++ KENNY_DEBUG_MOVES)
   // Same checks as in makeMove to ensure consistency after unmaking.
-  if (bitCnt(board.whitePawns) * PAWN_VALUE +
-          bitCnt(board.whiteKnights) * KNIGHT_VALUE +
-          bitCnt(board.whiteBishops) * BISHOP_VALUE +
-          bitCnt(board.whiteRooks) * ROOK_VALUE +
-          bitCnt(board.whiteQueens) * QUEEN_VALUE !=
-      board.totalWhitePawns + board.totalWhitePieces) {
-    print("Inconsistency in white material after unmakeMove!");
-  }
-  if (bitCnt(board.blackPawns) * PAWN_VALUE +
-          bitCnt(board.blackKnights) * KNIGHT_VALUE +
-          bitCnt(board.blackBishops) * BISHOP_VALUE +
-          bitCnt(board.blackRooks) * ROOK_VALUE +
-          bitCnt(board.blackQueens) * QUEEN_VALUE !=
-      board.totalBlackPawns + board.totalBlackPieces) {
-    print("Inconsistency in black material after unmakeMove!");
-  }
-  if (board.Material !=
-      (board.totalWhitePawns +
-          board.totalWhitePieces +
-          KING_VALUE -
-          (board.totalBlackPawns + board.totalBlackPieces + KING_VALUE))) {
-    print("Inconsistency in total material after unmakeMove!");
-  }
+  // if (bitCnt(board.whitePawns) * PAWN_VALUE +
+  //         bitCnt(board.whiteKnights) * KNIGHT_VALUE +
+  //         bitCnt(board.whiteBishops) * BISHOP_VALUE +
+  //         bitCnt(board.whiteRooks) * ROOK_VALUE +
+  //         bitCnt(board.whiteQueens) * QUEEN_VALUE !=
+  //     board.totalWhitePawns + board.totalWhitePieces) {
+  //   print("Inconsistency in white material after unmakeMove!");
+  // }
+  // if (bitCnt(board.blackPawns) * PAWN_VALUE +
+  //         bitCnt(board.blackKnights) * KNIGHT_VALUE +
+  //         bitCnt(board.blackBishops) * BISHOP_VALUE +
+  //         bitCnt(board.blackRooks) * ROOK_VALUE +
+  //         bitCnt(board.blackQueens) * QUEEN_VALUE !=
+  //     board.totalBlackPawns + board.totalBlackPieces) {
+  //   print("Inconsistency in black material after unmakeMove!");
+  // }
+  // if (board.Material !=
+  //     (board.totalWhitePawns +
+  //         board.totalWhitePieces +
+  //         KING_VALUE -
+  //         (board.totalBlackPawns + board.totalBlackPieces + KING_VALUE))) {
+  //   print("Inconsistency in total material after unmakeMove!");
+  // }
 }

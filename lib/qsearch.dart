@@ -9,8 +9,8 @@
 import 'defs.dart';
 import 'board.dart';
 import 'move.dart';
-import 'move_gen.dart'; // For captgen, isOwnKingAttacked, isOtherKingAttacked
-import 'make_move.dart'; // For makeMove, unmakeMove
+import 'move_gen3.dart'; // For captgen, isOwnKingAttacked, isOtherKingAttacked
+import 'make_move2.dart'; // For makeMove, unmakeMove
 import 'eval.dart'; // For eval()
 import 'peek.dart'; // For readClockAndInput (to check for timedout)
 
@@ -21,7 +21,8 @@ import 'peek.dart'; // For readClockAndInput (to check for timedout)
 /// Returns the evaluation score from the current side's perspective.
 int qsearch(int ply, int alpha, int beta) {
   // Check for timeout
-  if (board.timedout) return 0; // Return 0 or a special value indicating timeout
+  if (board.timedout)
+    return 0; // Return 0 or a special value indicating timeout
 
   board.triangularLength[ply] = ply; // Update triangular PV length
 

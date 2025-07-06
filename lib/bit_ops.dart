@@ -4,6 +4,7 @@
 /// translating the functions from kennyBitOps.cpp.
 /// These functions are essential for efficient chess engine operations.
 
+import 'board.dart';
 import 'defs.dart'; // For BitMap and U64 typedefs, and MS1BTABLE
 
 /// Counts the number of set bits (1s) in a 64-bit bitmap.
@@ -104,4 +105,57 @@ int lastOne(BitMap bitmap) {
     result += 8;
   }
   return result + MS1BTABLE[bitmap.toInt()];
+}
+
+String displayBitmap(BitMap bitmap) {
+  int i; //, rank, file;
+  // List<String> boardc = List.filled(64, "");
+  StringBuffer strBuf = StringBuffer();
+  print("h g f e d c b a");
+  for (i = 63; i >= 0; i--) {
+    if (bitmap & BITSET[i] != 0) {
+      strBuf.write('1 ');
+      if (i % 8 == 0 && i > 0) strBuf.write(' ${(i / 8).floor() + 1}\n');
+    } else {
+      strBuf.write('. ');
+      if (i % 8 == 0 && i > 0) strBuf.write(' ${(i / 8).floor() + 1}\n');
+    }
+  }
+
+  return strBuf.toString();
+
+  // for (i = 63 ; i >= 0 ; i--) {
+  //   print(boardc[i]);
+  // }
+  // print("\n  firstOne = ${firstOne(in)}, lastOne = ${lastOne(in)}, bitCnt = ${bitCnt(in)}\n");
+  // print("\n\n");
+
+  // if (board.viewRotated)
+  // {
+  // 	print("   hgfedcba\n\n");
+  // 	for (rank = 1 ; rank <= 8; rank++)
+  // 	{
+  // 	print("   ");
+  // 	for (file = 8 ; file >= 1; file--)
+  // 	{
+  // 		std::cout << boardc[BOARDINDEX[file][rank]];
+  // 	}
+  // 	std::cout << " " << rank << std::endl;
+  // 	}
+  // }
+  // else
+  // {
+  // 	for (rank = 8 ; rank >= 1; rank--)
+  // 	{
+  // 		std::cout << " " << rank << " ";
+  // 		for (file = 1 ; file <= 8; file++)
+  // 		{
+  // 			std::cout << boardc[BOARDINDEX[file][rank]];
+  // 		}
+  // 		std::cout << std::endl;
+  // 	}
+  // 	std::cout << std::endl << "   abcdefgh" << std::endl;
+  // }
+  // std::cout << std::endl;
+  // return;
 }

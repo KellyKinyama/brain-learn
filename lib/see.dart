@@ -10,7 +10,7 @@ import 'board.dart';
 import 'defs2.dart' as defs2;
 import 'move.dart';
 import 'bit_ops.dart'; // For firstOne, bitCnt
-import 'move_gen.dart'; // For getBishopAttacks, getRookAttacks (helper for isAttacked)
+import 'move_gen3.dart'; // For getBishopAttacks, getRookAttacks (helper for isAttacked)
 
 /// Calculates the Static Exchange Evaluation (SEE) for a given move.
 /// SEE determines the material balance after a sequence of captures on the 'to' square.

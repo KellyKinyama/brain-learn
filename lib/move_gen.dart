@@ -8,7 +8,7 @@ import 'defs.dart';
 import 'board.dart';
 import 'move.dart';
 import 'bit_ops.dart'; // For firstOne, lastOne, bitCnt
-import 'make_move2.dart';
+import 'make_move.dart';
 import 'utils.dart'; // For makeMove, unmakeMove
 
 /// Generates all pseudo-legal moves from the current board position.
@@ -256,6 +256,13 @@ int movegen(int moveBufStartIdx) {
         board.moveBuffer[currentMoveIdx].setTosq(to);
         board.moveBuffer[currentMoveIdx].setPiec(WHITE_QUEEN);
         board.moveBuffer[currentMoveIdx].setCapt(board.square[to]);
+
+        if (moveBufStartIdx == 236 && to == 39) {
+          print("Current starting position: $moveBufStartIdx. to: $to");
+          print(displayBitmap(targetBitmap));
+          print("generated move: ${board.moveBuffer[currentMoveIdx]}");
+          print(board.moveBuffer.sublist(moveBufStartIdx, currentMoveIdx + 1));
+        }
         currentMoveIdx++;
       }
     }
@@ -600,17 +607,22 @@ int movegen(int moveBufStartIdx) {
   int legalMovesCount = moveBufStartIdx;
   for (int i = moveBufStartIdx; i < currentMoveIdx; i++) {
     Move currentMove = board.moveBuffer[i];
-    makeMove(currentMove); // Temporarily make the move
-    if (!isOwnKingAttacked()) {
-      // If king is not attacked after the move, it's legal
-      board.moveBuffer[legalMovesCount] = currentMove; // Keep the legal move
-      legalMovesCount++;
-    }
-    unmakeMove(currentMove); // Unmake the move
+    // makeMove(currentMove); // Temporarily make the move
+    // if (!isOwnKingAttacked()) {
+    // If king is not attacked after the move, it's legal
+    board.moveBuffer[legalMovesCount] = currentMove; // Keep the legal move
+    legalMovesCount++;
+    // }
+    // unmakeMove(currentMove); // Unmake the move
   }
 
   board.moveBufLen[board.endOfGame + 1] =
       legalMovesCount; // Update next ply's start
+
+  if (moveBufStartIdx == 236) {
+    print("generated move: ${board.moveBuffer[currentMoveIdx]}");
+    print(board.moveBuffer.sublist(moveBufStartIdx, currentMoveIdx + 1));
+  }
   return legalMovesCount;
 }
 

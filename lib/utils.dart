@@ -7,7 +7,7 @@
 import 'defs.dart';
 import 'board.dart';
 import 'move.dart';
-import 'move_gen.dart'; // For isAttacked
+import 'move_gen2.dart'; // For isAttacked
 import 'display_move.dart'; // For toSan
 
 // =====================================================================
@@ -183,11 +183,17 @@ bool isValidTextMove(String textMove, Move outMove) {
   }
 
   // Generate all legal moves from the current position
-  int currentPlyMoveStart = board.moveBufLen[0];
+
+  int currentPlyMoveStart = board.moveBufLen[board.endOfGame];
+  print(
+    "Generate all legal moves from the current position: $currentPlyMoveStart",
+  );
   int currentPlyMoveEnd = movegen(
     currentPlyMoveStart,
   ); // Generate moves for root ply
-
+  if (currentPlyMoveStart == 236) {
+    print(board.moveBuffer.sublist(currentPlyMoveStart, currentPlyMoveEnd));
+  }
   // Iterate through generated moves to find a match
   for (int i = currentPlyMoveStart; i < currentPlyMoveEnd; i++) {
     Move generatedMove = board.moveBuffer[i];
@@ -243,6 +249,10 @@ bool isValidTextMove(String textMove, Move outMove) {
         }
       }
     }
+  }
+
+  if (currentPlyMoveStart == 236) {
+    print(board.moveBuffer.sublist(currentPlyMoveStart, currentPlyMoveEnd));
   }
 
   return false; // No matching legal move found

@@ -17,7 +17,7 @@ import 'defs.dart'; // For SQUARENAME, PIECECHARS, NOMOVE, etc.
 import 'move.dart';
 import 'display_move.dart'; // For formatMove (and potentially toSan)
 import 'make_move.dart'; // For makeMove, unmakeMove
-import 'move_gen.dart'; // For movegen, isOwnKingAttacked
+import 'move_gen3.dart'; // For movegen, isOwnKingAttacked
 import 'perft.dart'; // For perft function
 import 'read_fen.dart'; // For readFenString
 
@@ -35,11 +35,15 @@ class Engine {
   void setPosition(String fen, List<String> moves) {
     readFenString(fen); // Use your actual FEN reader
     for (var moveStr in moves) {
-      final parsedMove = _parseMove(moveStr); // Use the UCI engine's move parser
+      final parsedMove = _parseMove(
+        moveStr,
+      ); // Use the UCI engine's move parser
       if (parsedMove != NOMOVE) {
         makeMove(parsedMove); // Use your actual makeMove function
       } else {
-        stdout.writeln('info string Warning: Could not parse or make move: $moveStr');
+        stdout.writeln(
+          'info string Warning: Could not parse or make move: $moveStr',
+        );
       }
     }
   }
@@ -48,7 +52,9 @@ class Engine {
   /// This will call your `board.think()` method for actual search.
   Future<void> go(Map<String, dynamic> limits) async {
     if (_searchRunning) {
-      stdout.writeln('info string Search already running. Stopping current search.');
+      stdout.writeln(
+        'info string Search already running. Stopping current search.',
+      );
       stop();
       await _searchCompleter?.future; // Wait for previous search to stop
     }
@@ -89,20 +95,26 @@ class Engine {
       // In a real engine, you'd get the PV from your search algorithm.
       // For now, let's use a placeholder or derive from board.lastPV.
       if (board.lastPVLength > 0) {
-        pv = board.lastPV.sublist(0, board.lastPVLength).map((m) => formatMove(m)).join(' ');
+        pv = board.lastPV
+            .sublist(0, board.lastPVLength)
+            .map((m) => formatMove(m))
+            .join(' ');
       } else {
         pv = 'e2e4 e7e5'; // Default mock PV
       }
 
-
-      stdout.writeln('info depth $depth seldepth ${depth + 1} score cp $score '
-          'nodes $nodes nps ${nodes * 10} hashfull 500 tbhits 0 time ${depth * 100} pv $pv');
+      stdout.writeln(
+        'info depth $depth seldepth ${depth + 1} score cp $score '
+        'nodes $nodes nps ${nodes * 10} hashfull 500 tbhits 0 time ${depth * 100} pv $pv',
+      );
     }
 
     if (_searchRunning) {
       // Call your actual board.think() to get the best move
-      final bestMove = board.think(); // This should run your search and return the best move
-      final ponderMove = NOMOVE; // Your engine needs to determine the ponder move
+      final bestMove = board
+          .think(); // This should run your search and return the best move
+      final ponderMove =
+          NOMOVE; // Your engine needs to determine the ponder move
 
       _sendBestMove(bestMove, ponderMove);
     } else {
@@ -130,7 +142,9 @@ class Engine {
   /// Sends the bestmove and optional ponder move.
   void _sendBestMove(Move bestMove, [Move? ponderMove]) {
     String bestMoveStr = formatMove(bestMove);
-    String ponderMoveStr = ponderMove != NOMOVE ? ' ponder ${formatMove(ponderMove)}' : '';
+    String ponderMoveStr = ponderMove != NOMOVE
+        ? ' ponder ${formatMove(ponderMove)}'
+        : '';
     stdout.writeln('bestmove $bestMoveStr$ponderMoveStr');
   }
 
@@ -149,7 +163,6 @@ class Engine {
     return NOMOVE; // Return NOMOVE if no legal move matches
   }
 }
-
 
 /// The main UCI Engine class.
 class UCIEngine {
@@ -171,7 +184,7 @@ class UCIEngine {
 
   /// The main loop for processing UCI commands.
   Future<void> loop() async {
-    stdin.transform(SystemEncoding().decoder).transform(const LineSplitter()).listen((line) async {
+    stdin.transform(SystemEncoding().decoder).transform().listen((line) async {
       line = line.trim();
       if (line.isEmpty) return;
 
@@ -233,7 +246,9 @@ class UCIEngine {
       } else {
         type = 'string'; // Fallback for other types
       }
-      stdout.writeln('option name $key type $type default $defaultValue $extra'.trim());
+      stdout.writeln(
+        'option name $key type $type default $defaultValue $extra'.trim(),
+      );
     });
 
     stdout.writeln('uciok');
@@ -270,7 +285,9 @@ class UCIEngine {
         _engine._options[optionName] = parsedValue; // Update engine's options
         stdout.writeln('info string Set option $optionName to $parsedValue');
       } catch (e) {
-        stdout.writeln('info string Error parsing value for option $optionName: $e');
+        stdout.writeln(
+          'info string Error parsing value for option $optionName: $e',
+        );
       }
     } else {
       stdout.writeln('info string Unknown option: $optionName');
@@ -347,11 +364,19 @@ class UCIEngine {
       switch (token) {
         case 'searchmoves':
           limits['searchmoves'] = <String>[];
-          while (++i < parts.length && parts[i] != 'wtime' && parts[i] != 'btime' &&
-                 parts[i] != 'winc' && parts[i] != 'binc' && parts[i] != 'movestogo' &&
-                 parts[i] != 'depth' && parts[i] != 'nodes' && parts[i] != 'movetime' &&
-                 parts[i] != 'mate' && parts[i] != 'perft' && parts[i] != 'infinite' &&
-                 parts[i] != 'ponder') {
+          while (++i < parts.length &&
+              parts[i] != 'wtime' &&
+              parts[i] != 'btime' &&
+              parts[i] != 'winc' &&
+              parts[i] != 'binc' &&
+              parts[i] != 'movestogo' &&
+              parts[i] != 'depth' &&
+              parts[i] != 'nodes' &&
+              parts[i] != 'movetime' &&
+              parts[i] != 'mate' &&
+              parts[i] != 'perft' &&
+              parts[i] != 'infinite' &&
+              parts[i] != 'ponder') {
             (limits['searchmoves'] as List<String>).add(parts[i]);
           }
           i--; // Adjust index as loop increments it one too many

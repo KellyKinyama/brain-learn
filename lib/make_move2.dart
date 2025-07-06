@@ -4,7 +4,7 @@
 /// These functions are crucial for updating the board state after a move,
 /// including piece positions, material, castling rights, en passant square,
 /// fifty-move rule, and Zobrist hash key.
-/// This is a corrected version to fix material inconsistency bugs.
+/// They translate the logic from kennyMakeMove.cpp.
 
 import 'defs.dart';
 import 'board.dart';
@@ -14,7 +14,7 @@ import 'hash.dart';
 import 'bit_ops.dart'; // For bitCnt
 
 /// Applies a given move to the board, updating all relevant state variables.
-/// Translates `makeMove()` from kennyMakeMove.cpp with corrections.
+/// Translates `makeMove()` from kennyMakeMove.cpp.
 void makeMove(Move move) {
   int from = move.getFrom();
   int to = move.getTosq();
@@ -43,313 +43,203 @@ void makeMove(Move move) {
   if (board.epSquare != 0) {
     board.hashkey ^= KEY.ep[board.epSquare];
   }
-  board.epSquare =
-      0; // Reset en passant square, will be set later if it's a double pawn push
+  board.epSquare = 0; // Reset en passant square
 
-  // Update castling rights and hash keys
-  if ((board.castleWhite & CANCASTLEOO) != 0) board.hashkey ^= KEY.wk;
-  if ((board.castleWhite & CANCASTLEOOO) != 0) board.hashkey ^= KEY.wq;
-  if ((board.castleBlack & CANCASTLEOO) != 0) board.hashkey ^= KEY.bk;
-  if ((board.castleBlack & CANCASTLEOOO) != 0) board.hashkey ^= KEY.bq;
+  // --- Start of Castling Rights Update ---
+  // This logic is critical and mirrors the C++ implementation carefully.
+  // Rights are revoked if the king moves, a rook moves from its home square,
+  // or a rook is captured on its home square.
 
-  if (from == A1 || to == A1) board.castleWhite &= ~CANCASTLEOOO;
-  if (from == H1 || to == H1) board.castleWhite &= ~CANCASTLEOO;
-  if (from == E1) board.castleWhite = 0;
+  // 1. Update based on the piece that MOVES
+  if (piece == WHITE_KING) {
+    if ((board.castleWhite & CANCASTLEOO) != 0) board.hashkey ^= KEY.wk;
+    if ((board.castleWhite & CANCASTLEOOO) != 0) board.hashkey ^= KEY.wq;
+    board.castleWhite = 0;
+  } else if (piece == BLACK_KING) {
+    if ((board.castleBlack & CANCASTLEOO) != 0) board.hashkey ^= KEY.bk;
+    if ((board.castleBlack & CANCASTLEOOO) != 0) board.hashkey ^= KEY.bq;
+    board.castleBlack = 0;
+  }
 
-  if (from == A8 || to == A8) board.castleBlack &= ~CANCASTLEOOO;
-  if (from == H8 || to == H8) board.castleBlack &= ~CANCASTLEOO;
-  if (from == E8) board.castleBlack = 0;
+  if (from == A1) {
+    if ((board.castleWhite & CANCASTLEOOO) != 0) {
+      board.hashkey ^= KEY.wq;
+      board.castleWhite &= ~CANCASTLEOOO;
+    }
+  } else if (from == H1) {
+    if ((board.castleWhite & CANCASTLEOO) != 0) {
+      board.hashkey ^= KEY.wk;
+      board.castleWhite &= ~CANCASTLEOO;
+    }
+  } else if (from == A8) {
+    if ((board.castleBlack & CANCASTLEOOO) != 0) {
+      board.hashkey ^= KEY.bq;
+      board.castleBlack &= ~CANCASTLEOOO;
+    }
+  } else if (from == H8) {
+    if ((board.castleBlack & CANCASTLEOO) != 0) {
+      board.hashkey ^= KEY.bk;
+      board.castleBlack &= ~CANCASTLEOO;
+    }
+  }
 
-  // Also handle captures on rook squares
-  if (to == A1) board.castleWhite &= ~CANCASTLEOOO;
-  if (to == H1) board.castleWhite &= ~CANCASTLEOO;
-  if (to == A8) board.castleBlack &= ~CANCASTLEOOO;
-  if (to == H8) board.castleBlack &= ~CANCASTLEOO;
+  // 2. Update based on a CAPTURE on a rook's starting square
+  if (captured != EMPTY) {
+    if (to == A1) {
+      if ((board.castleWhite & CANCASTLEOOO) != 0) {
+        board.hashkey ^= KEY.wq;
+        board.castleWhite &= ~CANCASTLEOOO;
+      }
+    } else if (to == H1) {
+      if ((board.castleWhite & CANCASTLEOO) != 0) {
+        board.hashkey ^= KEY.wk;
+        board.castleWhite &= ~CANCASTLEOO;
+      }
+    } else if (to == A8) {
+      if ((board.castleBlack & CANCASTLEOOO) != 0) {
+        board.hashkey ^= KEY.bq;
+        board.castleBlack &= ~CANCASTLEOOO;
+      }
+    } else if (to == H8) {
+      if ((board.castleBlack & CANCASTLEOO) != 0) {
+        board.hashkey ^= KEY.bk;
+        board.castleBlack &= ~CANCASTLEOO;
+      }
+    }
+  }
+  // --- End of Castling Rights Update ---
 
-  if ((board.castleWhite & CANCASTLEOO) != 0) board.hashkey ^= KEY.wk;
-  if ((board.castleWhite & CANCASTLEOOO) != 0) board.hashkey ^= KEY.wq;
-  if ((board.castleBlack & CANCASTLEOO) != 0) board.hashkey ^= KEY.bk;
-  if ((board.castleBlack & CANCASTLEOOO) != 0) board.hashkey ^= KEY.bq;
-
+  // Update hash key for side to move
   board.hashkey ^= KEY.side;
 
-  // --- Core Move Execution ---
+  // Update bitboards and square array
+  BitMap fromToBitMap = BITSET[from] | BITSET[to];
 
-  // 1. Remove piece from 'from' square
+  // Remove piece from 'from' square
   board.hashkey ^= KEY.keys[from][piece];
   board.square[from] = EMPTY;
 
-  // 2. Handle captures
+  // Handle captures
   if (captured != EMPTY) {
-    if (move.isEnpassant()) {
-      int capturedPawnSq = (piece == WHITE_PAWN) ? (to - 8) : (to + 8);
-      board.square[capturedPawnSq] = EMPTY;
-      board.hashkey ^= KEY.keys[capturedPawnSq][captured];
-      board.Material -= PIECEVALUES[captured];
-      if (captured == WHITE_PAWN) {
-        board.totalWhitePawns -= PAWN_VALUE;
-      } else {
-        board.totalBlackPawns -= PAWN_VALUE;
-      }
-    } else {
-      // Regular capture
+    if (!move.isEnpassant()) {
       board.hashkey ^= KEY.keys[to][captured];
-      board.Material -= PIECEVALUES[captured];
-      switch (captured) {
-        case WHITE_PAWN:
-          board.totalWhitePawns -= PAWN_VALUE;
-          break;
-        case WHITE_KNIGHT:
-          board.totalWhitePieces -= KNIGHT_VALUE;
-          break;
-        case WHITE_BISHOP:
-          board.totalWhitePieces -= BISHOP_VALUE;
-          break;
-        case WHITE_ROOK:
-          board.totalWhitePieces -= ROOK_VALUE;
-          break;
-        case WHITE_QUEEN:
-          board.totalWhitePieces -= QUEEN_VALUE;
-          break;
-        case BLACK_PAWN:
-          board.totalBlackPawns -= PAWN_VALUE;
-          break;
-        case BLACK_KNIGHT:
-          board.totalBlackPieces -= KNIGHT_VALUE;
-          break;
-        case BLACK_BISHOP:
-          board.totalBlackPieces -= BISHOP_VALUE;
-          break;
-        case BLACK_ROOK:
-          board.totalBlackPieces -= ROOK_VALUE;
-          break;
-        case BLACK_QUEEN:
-          board.totalBlackPieces -= QUEEN_VALUE;
-          break;
-      }
+      _updateMaterialAndBitboardsForCapture(captured, to);
     }
   }
 
-  // 3. Handle piece placement and promotions
-  if (move.isPromotion()) {
-    // Remove pawn material
-    board.Material -= PIECEVALUES[piece];
-    if (piece == WHITE_PAWN) {
-      board.totalWhitePawns -= PAWN_VALUE;
-    } else {
-      board.totalBlackPawns -= PAWN_VALUE;
-    }
+  // Place piece on 'to' square
+  board.hashkey ^= KEY.keys[to][piece];
+  board.square[to] = piece;
 
-    // Place promoted piece and add its material
-    board.square[to] = promotion;
-    board.hashkey ^= KEY.keys[to][promotion];
-    board.Material += PIECEVALUES[promotion];
-    switch (promotion) {
-      case WHITE_KNIGHT:
-        board.totalWhitePieces += KNIGHT_VALUE;
-        break;
-      case WHITE_BISHOP:
-        board.totalWhitePieces += BISHOP_VALUE;
-        break;
-      case WHITE_ROOK:
-        board.totalWhitePieces += ROOK_VALUE;
-        break;
-      case WHITE_QUEEN:
-        board.totalWhitePieces += QUEEN_VALUE;
-        break;
-      case BLACK_KNIGHT:
-        board.totalBlackPieces += KNIGHT_VALUE;
-        break;
-      case BLACK_BISHOP:
-        board.totalBlackPieces += BISHOP_VALUE;
-        break;
-      case BLACK_ROOK:
-        board.totalBlackPieces += ROOK_VALUE;
-        break;
-      case BLACK_QUEEN:
-        board.totalBlackPieces += QUEEN_VALUE;
-        break;
-    }
-  } else {
-    // Not a promotion, just place the moving piece
-    board.square[to] = piece;
-    board.hashkey ^= KEY.keys[to][piece];
-  }
-
-  // 4. Handle other special moves
+  // Handle specific move types
   if (move.isPawnDoublemove()) {
     board.epSquare = (piece == WHITE_PAWN) ? (to - 8) : (to + 8);
     board.hashkey ^= KEY.ep[board.epSquare];
-  } else if (move.isCastleOO()) {
-    int rookFrom = (piece == WHITE_KING) ? H1 : H8;
-    int rookTo = (piece == WHITE_KING) ? F1 : F8;
-    int rookPiece = (piece == WHITE_KING) ? WHITE_ROOK : BLACK_ROOK;
-    board.hashkey ^=
-        KEY.keys[rookFrom][rookPiece] ^ KEY.keys[rookTo][rookPiece];
-    board.square[rookFrom] = EMPTY;
-    board.square[rookTo] = rookPiece;
-  } else if (move.isCastleOOO()) {
-    int rookFrom = (piece == WHITE_KING) ? A1 : A8;
-    int rookTo = (piece == WHITE_KING) ? D1 : D8;
-    int rookPiece = (piece == WHITE_KING) ? WHITE_ROOK : BLACK_ROOK;
-    board.hashkey ^=
-        KEY.keys[rookFrom][rookPiece] ^ KEY.keys[rookTo][rookPiece];
-    board.square[rookFrom] = EMPTY;
-    board.square[rookTo] = rookPiece;
-  }
-
-  // Update bitboards based on the final square array
-  board.whiteKing = 0;
-  board.whiteQueens = 0;
-  board.whiteRooks = 0;
-  board.whiteBishops = 0;
-  board.whiteKnights = 0;
-  board.whitePawns = 0;
-  board.blackKing = 0;
-  board.blackQueens = 0;
-  board.blackRooks = 0;
-  board.blackBishops = 0;
-  board.blackKnights = 0;
-  board.blackPawns = 0;
-
-  for (int i = 0; i < 64; i++) {
-    switch (board.square[i]) {
-      case WHITE_PAWN:
-        board.whitePawns |= BITSET[i];
-        break;
-      case WHITE_KNIGHT:
-        board.whiteKnights |= BITSET[i];
-        break;
-      case WHITE_BISHOP:
-        board.whiteBishops |= BITSET[i];
-        break;
-      case WHITE_ROOK:
-        board.whiteRooks |= BITSET[i];
-        break;
-      case WHITE_QUEEN:
-        board.whiteQueens |= BITSET[i];
-        break;
-      case WHITE_KING:
-        board.whiteKing |= BITSET[i];
-        break;
-      case BLACK_PAWN:
-        board.blackPawns |= BITSET[i];
-        break;
-      case BLACK_KNIGHT:
-        board.blackKnights |= BITSET[i];
-        break;
-      case BLACK_BISHOP:
-        board.blackBishops |= BITSET[i];
-        break;
-      case BLACK_ROOK:
-        board.blackRooks |= BITSET[i];
-        break;
-      case BLACK_QUEEN:
-        board.blackQueens |= BITSET[i];
-        break;
-      case BLACK_KING:
-        board.blackKing |= BITSET[i];
-        break;
+  } else if (move.isEnpassant()) {
+    int capturedPawnSq = (piece == WHITE_PAWN) ? (to - 8) : (to + 8);
+    board.square[capturedPawnSq] = EMPTY;
+    board.hashkey ^= KEY.keys[capturedPawnSq][captured];
+    _updateMaterialAndBitboardsForCapture(captured, capturedPawnSq);
+  } else if (move.isCastle()) {
+    if (to == G1) {
+      // White O-O
+      board.square[H1] = EMPTY;
+      board.square[F1] = WHITE_ROOK;
+      board.hashkey ^= KEY.keys[H1][WHITE_ROOK] ^ KEY.keys[F1][WHITE_ROOK];
+    } else if (to == C1) {
+      // White O-O-O
+      board.square[A1] = EMPTY;
+      board.square[D1] = WHITE_ROOK;
+      board.hashkey ^= KEY.keys[A1][WHITE_ROOK] ^ KEY.keys[D1][WHITE_ROOK];
+    } else if (to == G8) {
+      // Black O-O
+      board.square[H8] = EMPTY;
+      board.square[F8] = BLACK_ROOK;
+      board.hashkey ^= KEY.keys[H8][BLACK_ROOK] ^ KEY.keys[F8][BLACK_ROOK];
+    } else if (to == C8) {
+      // Black O-O-O
+      board.square[A8] = EMPTY;
+      board.square[D8] = BLACK_ROOK;
+      board.hashkey ^= KEY.keys[A8][BLACK_ROOK] ^ KEY.keys[D8][BLACK_ROOK];
     }
+  } else if (move.isPromotion()) {
+    board.hashkey ^= KEY.keys[to][piece]; // XOR out pawn
+    board.hashkey ^= KEY.keys[to][promotion]; // XOR in promoted piece
+    board.square[to] = promotion;
+    _updateMaterialForPromotion(piece, promotion);
   }
 
-  board.whitePieces =
-      board.whitePawns |
-      board.whiteKnights |
-      board.whiteBishops |
-      board.whiteRooks |
-      board.whiteQueens |
-      board.whiteKing;
-  board.blackPieces =
-      board.blackPawns |
-      board.blackKnights |
-      board.blackBishops |
-      board.blackRooks |
-      board.blackQueens |
-      board.blackKing;
-  board.occupiedSquares = board.whitePieces | board.blackPieces;
+  // Rebuild all bitboards from the square array for consistency
+  _rebuildBitboards();
 
+  // Toggle side to move
   board.nextMove = (board.nextMove == WHITE_MOVE) ? BLACK_MOVE : WHITE_MOVE;
-
-  // Final consistency check
-  final int totalMaterialFromPieces =
-      (board.totalWhitePawns + board.totalWhitePieces) -
-      (board.totalBlackPawns + board.totalBlackPieces);
-  if (board.Material != totalMaterialFromPieces) {
-    print("Inconsistency in total material after makeMove!");
-  }
 }
 
 /// Undoes the last move, restoring the board to its previous state.
-/// Translates `unmakeMove()` from kennyMakeMove.cpp with corrections.
+/// Translates `unmakeMove()` from kennyMakeMove.cpp.
 void unmakeMove(Move move) {
   board.endOfGame--;
   board.endOfSearch--;
 
+  // Restore state from gameLine, which is the most reliable way
   GameLineRecord prevRecord = board.gameLine[board.endOfGame];
+  board.castleWhite = prevRecord.castleWhite;
+  board.castleBlack = prevRecord.castleBlack;
+  board.epSquare = prevRecord.epSquare;
+  board.fiftyMove = prevRecord.fiftyMove;
+  board.hashkey = prevRecord.key; // Restore hash key completely
 
+  // Toggle side to move back
+  board.nextMove = (board.nextMove == WHITE_MOVE) ? BLACK_MOVE : WHITE_MOVE;
+
+  // Since we restored the hash key, we just need to restore the board arrays
   int from = move.getFrom();
   int to = move.getTosq();
   int piece = move.getPiec();
   int captured = move.getCapt();
   int promotion = move.getProm();
 
-  board.nextMove = (board.nextMove == WHITE_MOVE) ? BLACK_MOVE : WHITE_MOVE;
-
-  // Restore state from gameLine
-  board.castleWhite = prevRecord.castleWhite;
-  board.castleBlack = prevRecord.castleBlack;
-  board.fiftyMove = prevRecord.fiftyMove;
-  board.epSquare = prevRecord.epSquare;
-  board.hashkey = prevRecord.key; // Restore hash key completely
-
-  // --- Core Un-make Execution ---
-  // The hash key is restored from the game line, so we only need to update the board state.
-  // The bitboards will be rebuilt at the end for simplicity and correctness.
-
-  // 1. Move piece back from 'to' to 'from'
+  // Move piece back
   board.square[from] = piece;
 
-  // 2. Clear the 'to' square. If it was a regular capture, the captured piece will be placed here.
-  board.square[to] = EMPTY;
-
-  // 3. Handle un-doing special move effects
-  if (move.isPromotion()) {
-    // The piece on the 'to' square was the promotion piece.
-    // It's already gone since we set square[to] = EMPTY.
-    // Now we just need to restore the captured piece if there was one.
-    if (captured != EMPTY) {
-      board.square[to] = captured;
-    }
-  } else if (move.isEnpassant()) {
-    // Restore the captured pawn to its actual square
+  // Handle special move types for unmaking
+  if (move.isEnpassant()) {
+    board.square[to] = EMPTY;
     int capturedPawnSq = (piece == WHITE_PAWN) ? (to - 8) : (to + 8);
     board.square[capturedPawnSq] = captured;
-    board.square[to] = EMPTY; // The 'to' square was empty in an en passant move
-  } else if (move.isCastleOO()) {
-    int rookFrom = (piece == WHITE_KING) ? H1 : H8;
-    int rookTo = (piece == WHITE_KING) ? F1 : F8;
-    int rookPiece = (piece == WHITE_KING) ? WHITE_ROOK : BLACK_ROOK;
-    board.square[rookFrom] = rookPiece;
-    board.square[rookTo] = EMPTY;
-  } else if (move.isCastleOOO()) {
-    int rookFrom = (piece == WHITE_KING) ? A1 : A8;
-    int rookTo = (piece == WHITE_KING) ? D1 : D8;
-    int rookPiece = (piece == WHITE_KING) ? WHITE_ROOK : BLACK_ROOK;
-    board.square[rookFrom] = rookPiece;
-    board.square[rookTo] = EMPTY;
-  } else if (captured != EMPTY) {
-    // For regular captures, restore the captured piece on the 'to' square
-    board.square[to] = captured;
+  } else if (move.isCastle()) {
+    board.square[to] = EMPTY;
+    if (to == G1) {
+      // White O-O
+      board.square[H1] = WHITE_ROOK;
+      board.square[F1] = EMPTY;
+    } else if (to == C1) {
+      // White O-O-O
+      board.square[A1] = WHITE_ROOK;
+      board.square[D1] = EMPTY;
+    } else if (to == G8) {
+      // Black O-O
+      board.square[H8] = BLACK_ROOK;
+      board.square[F8] = EMPTY;
+    } else if (to == C8) {
+      // Black O-O-O
+      board.square[A8] = BLACK_ROOK;
+      board.square[D8] = EMPTY;
+    }
+  } else {
+    // For normal moves, promotions, and regular captures
+    board.square[to] =
+        captured; // This handles both captures and quiet moves (captured=EMPTY)
   }
 
-  // Recalculate all material and bitboards from scratch based on the restored square array
-  board.Material = 0;
-  board.totalWhitePawns = 0;
-  board.totalBlackPawns = 0;
-  board.totalWhitePieces = 0;
-  board.totalBlackPieces = 0;
+  // Rebuild all bitboards and material counts from the restored square array
+  _rebuildBitboards();
+  _rebuildMaterial();
+}
 
+// Helper to rebuild all bitboards from the board.square array
+void _rebuildBitboards() {
   board.whiteKing = 0;
   board.whiteQueens = 0;
   board.whiteRooks = 0;
@@ -367,46 +257,36 @@ void unmakeMove(Move move) {
     switch (board.square[i]) {
       case WHITE_PAWN:
         board.whitePawns |= BITSET[i];
-        board.totalWhitePawns += PAWN_VALUE;
         break;
       case WHITE_KNIGHT:
         board.whiteKnights |= BITSET[i];
-        board.totalWhitePieces += KNIGHT_VALUE;
         break;
       case WHITE_BISHOP:
         board.whiteBishops |= BITSET[i];
-        board.totalWhitePieces += BISHOP_VALUE;
         break;
       case WHITE_ROOK:
         board.whiteRooks |= BITSET[i];
-        board.totalWhitePieces += ROOK_VALUE;
         break;
       case WHITE_QUEEN:
         board.whiteQueens |= BITSET[i];
-        board.totalWhitePieces += QUEEN_VALUE;
         break;
       case WHITE_KING:
         board.whiteKing |= BITSET[i];
         break;
       case BLACK_PAWN:
         board.blackPawns |= BITSET[i];
-        board.totalBlackPawns += PAWN_VALUE;
         break;
       case BLACK_KNIGHT:
         board.blackKnights |= BITSET[i];
-        board.totalBlackPieces += KNIGHT_VALUE;
         break;
       case BLACK_BISHOP:
         board.blackBishops |= BITSET[i];
-        board.totalBlackPieces += BISHOP_VALUE;
         break;
       case BLACK_ROOK:
         board.blackRooks |= BITSET[i];
-        board.totalBlackPieces += ROOK_VALUE;
         break;
       case BLACK_QUEEN:
         board.blackQueens |= BITSET[i];
-        board.totalBlackPieces += QUEEN_VALUE;
         break;
       case BLACK_KING:
         board.blackKing |= BITSET[i];
@@ -414,9 +294,6 @@ void unmakeMove(Move move) {
     }
   }
 
-  board.Material =
-      (board.totalWhitePawns + board.totalWhitePieces) -
-      (board.totalBlackPawns + board.totalBlackPieces);
   board.whitePieces =
       board.whitePawns |
       board.whiteKnights |
@@ -432,12 +309,73 @@ void unmakeMove(Move move) {
       board.blackQueens |
       board.blackKing;
   board.occupiedSquares = board.whitePieces | board.blackPieces;
+}
 
-  // Final consistency check
-  final int totalMaterialFromPieces =
+// Helper to update material counts when a piece is captured
+void _updateMaterialAndBitboardsForCapture(int captured, int sq) {
+  board.Material -= PIECEVALUES[captured];
+  switch (captured) {
+    case WHITE_PAWN:
+      board.totalWhitePawns -= PAWN_VALUE;
+      break;
+    case WHITE_KNIGHT:
+      board.totalWhitePieces -= KNIGHT_VALUE;
+      break;
+    case WHITE_BISHOP:
+      board.totalWhitePieces -= BISHOP_VALUE;
+      break;
+    case WHITE_ROOK:
+      board.totalWhitePieces -= ROOK_VALUE;
+      break;
+    case WHITE_QUEEN:
+      board.totalWhitePieces -= QUEEN_VALUE;
+      break;
+    case BLACK_PAWN:
+      board.totalBlackPawns -= PAWN_VALUE;
+      break;
+    case BLACK_KNIGHT:
+      board.totalBlackPieces -= KNIGHT_VALUE;
+      break;
+    case BLACK_BISHOP:
+      board.totalBlackPieces -= BISHOP_VALUE;
+      break;
+    case BLACK_ROOK:
+      board.totalBlackPieces -= ROOK_VALUE;
+      break;
+    case BLACK_QUEEN:
+      board.totalBlackPieces -= QUEEN_VALUE;
+      break;
+  }
+}
+
+// Helper to update material counts for promotion
+void _updateMaterialForPromotion(int pawn, int promotedPiece) {
+  board.Material -= PIECEVALUES[pawn];
+  board.Material += PIECEVALUES[promotedPiece];
+  if (pawn == WHITE_PAWN) {
+    board.totalWhitePawns -= PAWN_VALUE;
+    board.totalWhitePieces += PIECEVALUES[promotedPiece];
+  } else {
+    board.totalBlackPawns -= PAWN_VALUE;
+    board.totalBlackPieces += PIECEVALUES[promotedPiece];
+  }
+}
+
+// Helper to rebuild material from scratch
+void _rebuildMaterial() {
+  board.totalWhitePawns = bitCnt(board.whitePawns) * PAWN_VALUE;
+  board.totalBlackPawns = bitCnt(board.blackPawns) * PAWN_VALUE;
+  board.totalWhitePieces =
+      bitCnt(board.whiteKnights) * KNIGHT_VALUE +
+      bitCnt(board.whiteBishops) * BISHOP_VALUE +
+      bitCnt(board.whiteRooks) * ROOK_VALUE +
+      bitCnt(board.whiteQueens) * QUEEN_VALUE;
+  board.totalBlackPieces =
+      bitCnt(board.blackKnights) * KNIGHT_VALUE +
+      bitCnt(board.blackBishops) * BISHOP_VALUE +
+      bitCnt(board.blackRooks) * ROOK_VALUE +
+      bitCnt(board.blackQueens) * QUEEN_VALUE;
+  board.Material =
       (board.totalWhitePawns + board.totalWhitePieces) -
       (board.totalBlackPawns + board.totalBlackPieces);
-  if (board.Material != totalMaterialFromPieces) {
-    print("Inconsistency in total material after unmakeMove!");
-  }
 }

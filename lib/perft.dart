@@ -8,8 +8,8 @@
 import 'defs.dart';
 import 'board.dart';
 import 'move.dart';
-import 'move_gen.dart'; // For movegen, isOtherKingAttacked, isOwnKingAttacked
-import 'make_move.dart'; // For makeMove, unmakeMove
+import 'move_gen3.dart'; // For movegen, isOtherKingAttacked, isOwnKingAttacked
+import 'make_move2.dart'; // For makeMove, unmakeMove
 
 /// Performs a Perft (Performance Test) search up to a given depth.
 /// This function recursively generates moves, makes them, and counts the resulting nodes.
@@ -58,7 +58,7 @@ U64 perft(int ply, int depth) {
         if (currentMove.isCastleOO()) ICASTLOO++;
         if (currentMove.isCastleOOO()) ICASTLOOO++;
         // Check if the current move results in a check on the opponent's king
-        if (isOtherKingAttacked()) ICHECK++;
+        // if (isOtherKingAttacked()) ICHECK++;
       }
     }
 
