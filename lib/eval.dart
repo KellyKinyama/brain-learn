@@ -106,6 +106,13 @@ int eval() {
     score += KINGPOS_ENDGAME_W[whiteKingSquare];
     score -= KINGPOS_ENDGAME_B[blackKingSquare];
   } else {
+    // print(
+    //   "whiteKingSquare: $whiteKingSquare, blackKingSquare: $blackKingSquare",
+    // );
+    if (whiteKingSquare < 0 || whiteKingSquare > 63) {
+      throw Exception("Invalid white king square: $whiteKingSquare");
+      // return 0; // Invalid position
+    }
     score += KINGPOS_W[whiteKingSquare];
     score -= KINGPOS_B[blackKingSquare];
   }

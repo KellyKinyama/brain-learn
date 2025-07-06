@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:io';
 
+import 'package:brain_learn/search.dart';
 import 'package:brain_learn/utils.dart';
 
 import 'board.dart';
@@ -8,7 +9,48 @@ import 'make_move2.dart';
 
 import 'data.dart';
 import 'move.dart';
-import 'move_gen3.dart';
+import 'move_gen2.dart';
+// import 'perft.dart';
+
+int maxChecksMoveCount = 20;
+
+// void main() {
+//   dataInit();
+//   board = Board();
+//   board.init();
+
+//   board.display();
+
+//   // print(perft(0, 3));
+
+//   for (int x = 0; x < 20; x++) {
+//     final movesLength = movegen(x);
+//     final moves = board.moveBuffer.sublist(x, movesLength);
+
+//     // print("move buffer: ${movegen(0)}");
+//     print("Moves: $moves");
+//     Move moveFound = moves[Random().nextInt(moves.length - 1).floor()];
+
+//     makeMove(moveFound);
+//     int moveCount = 0;
+//     while (isOwnKingAttacked()) {
+//       moveCount++;
+//       if (moveCount > maxChecksMoveCount) {
+//         print("Checkmate or draw");
+//         return;
+//       }
+//       // if (isOwnKingAttacked()) {
+//       unmakeMove(moveFound);
+//       moveFound = moves[Random().nextInt(moves.length - 1).floor()];
+//       makeMove(moveFound);
+//     }
+
+//     if (moveCount > maxChecksMoveCount) break;
+//     print("Move found: $moveFound");
+
+//     board.display();
+//   }
+// }
 
 void main() {
   dataInit();
@@ -16,60 +58,76 @@ void main() {
   board.init();
 
   while (true) {
+    // dataInit();
+
     final uci = stdin.readLineSync();
+    // print("UCI command: $uci");
 
-    if (uci == null) continue;
+    switch (uci) {
+      case "uci":
+        {
+          print("name Monica");
+          print("author Kelly Kinyama");
+          print("uciok");
+        }
 
-    if (uci == "uci") {
-      print("id name Monica");
-      print("id author Kelly Kinyama");
-      print("uciok");
-    } else if (uci == "isready") {
-      print("readyok");
-    } else if (uci.startsWith("position")) {
-      List<String> parts = uci.split(' ');
-      board.init(); // Reset to startpos
+      case "isready":
+        {
+          print("readyok");
+        }
 
-      int movesIndex = parts.indexOf("moves");
-      if (movesIndex != -1) {
-        List<String> movesList = parts.sublist(movesIndex + 1);
-        for (String moveStr in movesList) {
-          Move outMove = Move();
-          // Generate legal moves to find the one that matches the string
-          int end = movegen(board.moveBufLen[board.endOfGame]);
-          bool moveFound = false;
-          for (int i = board.moveBufLen[board.endOfGame]; i < end; i++) {
-            if (board.moveBuffer[i].toAlgebraic() == moveStr) {
-              outMove = board.moveBuffer[i];
-              moveFound = true;
-              break;
+      // case "position startpos":
+      //   {}
+      //position startpos moves c2c4 f7f6 b1c3 b7b6 d2d4 c8a6 e2e3 b6b5 f1d3 e7e6 d1h5
+      // "go wtime 300000 btime 300000 winc 0 binc 0"
+      default:
+        {
+          if (uci != null) {
+            List<String> movesList = [];
+            List<Move> moves = [];
+            if (uci.startsWith("position startpos moves ")) {
+              board = Board();
+              board.init();
+              movesList = uci.substring(24).split(" ");
+              print("Parsed moves: $movesList");
+
+              for (int x = 0; x < movesList.length; x++) {
+                Move outMove = Move();
+                if (isValidTextMove(movesList[x], outMove)) {
+                  print("making move: ${outMove.toAlgebraic()}");
+                  // final movesLength = movegen(x);
+                  // moves = board.moveBuffer.sublist(x, movesLength);
+                  // moves = board.moveBuffer.sublist(x);
+                  makeMove(outMove);
+                } else {
+                  //   board.display();
+                  //   print(moves);
+                  throw "Invalid move: ${outMove.toAlgebraic()}. Move index: $x. Move index: ${movesList[x]}";
+                }
+              }
+            } else if (uci.startsWith("position startpos")) {
+              board = Board();
+              board.init();
+            }
+            if (uci.startsWith("go")) {
+              // Generate all legal moves for the current position.
+              // int endIdx = movegen(board.moveBufLen[board.endOfGame]);
+              // int startIdx = board.moveBufLen[board.endOfGame];
+              // int numLegalMoves = endIdx - startIdx;
+
+              // if (numLegalMoves > 0) {
+              //   // Select a random legal move
+              //   final randomIndex = startIdx + Random().nextInt(numLegalMoves);
+              //   final moveFound = board.moveBuffer[randomIndex];
+              //   print("bestmove ${moveFound.toAlgebraic()}");
+              // } else {
+              //   // No legal moves, could be checkmate or stalemate
+              //   print("bestmove 0000");
+              // }
+              print("bestmove ${think().toAlgebraic()}");
             }
           }
-
-          if (moveFound) {
-            makeMove(outMove);
-          } else {
-            // This indicates a problem with the UCI command or the move generator
-            print("Error: Could not find or make move $moveStr");
-            break;
-          }
         }
-      }
-    } else if (uci.startsWith("go")) {
-      // Generate all legal moves for the current position.
-      int endIdx = movegen(board.moveBufLen[board.endOfGame]);
-      int startIdx = board.moveBufLen[board.endOfGame];
-      int numLegalMoves = endIdx - startIdx;
-
-      if (numLegalMoves > 0) {
-        // Select a random legal move
-        final randomIndex = startIdx + Random().nextInt(numLegalMoves);
-        final moveFound = board.moveBuffer[randomIndex];
-        print("bestmove ${moveFound.toAlgebraic()}");
-      } else {
-        // No legal moves, could be checkmate or stalemate
-        print("bestmove 0000");
-      }
     }
   }
 }

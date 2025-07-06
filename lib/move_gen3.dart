@@ -327,13 +327,13 @@ int movegen(int moveBufStartIdx) {
   int legalMovesCount = moveBufStartIdx;
   for (int i = moveBufStartIdx; i < currentMoveIdx; i++) {
     Move currentMove = board.moveBuffer[i];
-    makeMove(currentMove); // Temporarily make the move
-    if (!isOwnKingAttacked()) {
-      // If king is not attacked after the move, it's legal
-      board.moveBuffer[legalMovesCount] = currentMove; // Keep the legal move
-      legalMovesCount++;
-    }
-    unmakeMove(currentMove); // Unmake the move
+    // makeMove(currentMove); // Temporarily make the move
+    // if (!isOwnKingAttacked()) {
+    // If king is not attacked after the move, it's legal
+    board.moveBuffer[legalMovesCount] = currentMove; // Keep the legal move
+    legalMovesCount++;
+    // }
+    // unmakeMove(currentMove); // Unmake the move
   }
 
   board.moveBufLen[board.endOfGame + 1] = legalMovesCount;
@@ -519,6 +519,31 @@ BOOLTYPE isOwnKingAttacked() {
     return isAttacked(firstOne(board.whiteKing), BLACK_MOVE);
   }
 }
+
+/// Checks if the king of the side that just moved is in check.
+/// This is called after a move is made, so `board.nextMove` has been flipped.
+BOOLTYPE isOtherKingAttacked() {
+  // If it's now White's turn, it means Black just moved.
+  if (board.nextMove == WHITE_MOVE) {
+    // Check if the black king is attacked by white pieces.
+    if (board.blackKing == 0) return true; // King captured, illegal state
+    return isAttacked(firstOne(board.whiteKing), WHITE_MOVE);
+  } else {
+    // It's now Black's turn, so White just moved.
+    // Check if the white king is attacked by black pieces.
+    if (board.whiteKing == 0) return true; // King captured, illegal state
+    return isAttacked(firstOne(board.blackKing), BLACK_MOVE);
+  }
+}
+
+// BOOLTYPE isOtherKingAttacked() {
+//   // check to see if we are leaving our king in check
+//   if (board.nextMove) {
+//     return isAttacked(board.whiteKing, board.nextMove);
+//   } else {
+//     return isAttacked(board.blackKing, board.nextMove);
+//   }
+// }
 
 /// Checks if a given square is attacked by any piece of the specified attacking side.
 /// [targetSquare] The square to check for attacks.

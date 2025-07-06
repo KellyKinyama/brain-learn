@@ -20,8 +20,8 @@ import 'see.dart'; // For SEE
 /// [followpv] True if currently following the Principal Variation.
 void selectmove(int ply, int i, int depth, BOOLTYPE followpv) {
   int j, k;
-  int bestScore;
-  Move temp;
+  int best;
+  Move temp = Move();
 
   // 1. Prioritize the Principal Variation (PV) move
   // If we are following the PV and it's not a leaf node of the PV,
@@ -44,35 +44,53 @@ void selectmove(int ply, int i, int depth, BOOLTYPE followpv) {
   // For now, we'll use a simple heuristic: captures first (sorted by SEE), then other moves.
 
   // Find the best move based on heuristics (e.g., history table scores or SEE for captures)
-  bestScore = -1; // Initialize with a very low score
+  best = -1; // Initialize with a very low score
   int bestIdx = i;
 
-  for (j = i; j < board.moveBufLen[ply + 1]; j++) {
-    int currentMoveScore = 0;
-    Move currentMove = board.moveBuffer[j];
-
-    if (currentMove.isCapture()) {
-      currentMoveScore = SEE(currentMove) + OFFSET; // Add offset to make scores positive
-    } else {
-      // For non-captures, use history heuristic (if available)
-      if (board.nextMove == WHITE_MOVE) {
-        currentMoveScore = board.whiteHeuristics[currentMove.getFrom()][currentMove.getTosq()];
-      } else {
-        currentMoveScore = board.blackHeuristics[currentMove.getFrom()][currentMove.getTosq()];
+  if (board.nextMove == BLACK_MOVE) {
+    best =
+        board.blackHeuristics[board.moveBuffer[i].getFrom()][board.moveBuffer[i]
+            .getTosq()];
+    j = i;
+    for (k = i + 1; k < board.moveBufLen[ply + 1]; k++) {
+      if (board.blackHeuristics[board.moveBuffer[k].getFrom()][board
+              .moveBuffer[k]
+              .getTosq()] >
+          best) {
+        best =
+            board.blackHeuristics[board.moveBuffer[k].getFrom()][board
+                .moveBuffer[k]
+                .getTosq()];
+        j = k;
       }
     }
-
-    if (currentMoveScore > bestScore) {
-      bestScore = currentMoveScore;
-      bestIdx = j;
+    if (j > i) {
+      temp.moveInt = board.moveBuffer[j].moveInt;
+      board.moveBuffer[j].moveInt = board.moveBuffer[i].moveInt;
+      board.moveBuffer[i].moveInt = temp.moveInt;
     }
-  }
-
-  // Swap the best move found to the current position `i`
-  if (bestIdx > i) {
-    temp = board.moveBuffer[bestIdx];
-    board.moveBuffer[bestIdx] = board.moveBuffer[i];
-    board.moveBuffer[i] = temp;
+  } else {
+    best =
+        board.whiteHeuristics[board.moveBuffer[i].getFrom()][board.moveBuffer[i]
+            .getTosq()];
+    j = i;
+    for (k = i + 1; k < board.moveBufLen[ply + 1]; k++) {
+      if (board.whiteHeuristics[board.moveBuffer[k].getFrom()][board
+              .moveBuffer[k]
+              .getTosq()] >
+          best) {
+        best =
+            board.whiteHeuristics[board.moveBuffer[k].getFrom()][board
+                .moveBuffer[k]
+                .getTosq()];
+        j = k;
+      }
+    }
+    if (j > i) {
+      temp.moveInt = board.moveBuffer[j].moveInt;
+      board.moveBuffer[j].moveInt = board.moveBuffer[i].moveInt;
+      board.moveBuffer[i].moveInt = temp.moveInt;
+    }
   }
 }
 
