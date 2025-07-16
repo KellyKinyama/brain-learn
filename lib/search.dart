@@ -5,6 +5,8 @@
 /// and principal variation search (PVS).
 /// It translates the logic from kennySearch.cpp.
 
+import 'package:brain_learn/tt.dart';
+
 import 'defs.dart';
 import 'board.dart';
 import 'hash.dart';
@@ -12,8 +14,8 @@ import 'move.dart';
 import 'move_gen3.dart'; // For movegen, isOwnKingAttacked, isOtherKingAttacked
 import 'make_move2.dart'; // For makeMove, unmakeMove
 import 'eval.dart'; // For eval()
-import 'qsearch.dart'; // For qsearch()
 import 'peek.dart'; // For readClockAndInput()
+import 'qsearch.dart';
 import 'sort_moves.dart'; // For selectmove()
 
 /// The main entry point for the engine's thinking process.
@@ -145,7 +147,7 @@ Move think() {
   // int bestMoveScore = -LARGE_NUMBER; // Initialize best move score
   // Move bestMove = NOMOVE; // Initialize best move
 
-  for (int id = 1; id <= 5; id++) {
+  for (int id = 1; id <= 8; id++) {
     board.followpv = true;
     board.moveBuffer = List.generate(MAX_MOV_BUFF, (index) => Move());
     board.moveBufLen = List.filled(MAX_PLY, 0);
@@ -155,18 +157,20 @@ Move think() {
       (_) => List.generate(MAX_PLY, (__) => Move()),
     );
     alphabetapvs(0, id, -LARGE_NUMBER, LARGE_NUMBER);
+    rememberPV();
   }
   return board.triangularArray[0][0];
   // return bestMove; // Return the best move found
 }
 
 int alphabetapvs(int ply, int depth, int alpha, int beta) {
-  if (depth <= 0) {
+  if (depth <= 0 && !isOwnKingAttacked()) {
     board.followpv = false;
     return eval(); // Call evaluation function at leaf nodes
     // qsearch(ply, alpha, beta);
   }
   int i;
+  Move? ttMove;
   // Generate all legal moves for the current posi
 
   // int bestMoveScore = -LARGE_NUMBER; // Initialize best move score
@@ -174,6 +178,24 @@ int alphabetapvs(int ply, int depth, int alpha, int beta) {
   // int movesfound = 0;
 
   board.triangularLength[ply] = ply;
+
+  final ttEntry = minimaxTree.probe(board.hashkey);
+  if (ttEntry != null && ttEntry.key == board.hashkey) {
+    ttMove = ttEntry.move;
+    if (ttEntry.depth >= depth && !board.followpv) {
+      if (ttEntry.nodeType == NodeType.exact) {
+        return ttEntry.score;
+      }
+      if (ttEntry.nodeType == NodeType.lowerBound && ttEntry.score >= beta) {
+        // print("TT entry: $ttEntry");
+        return ttEntry.score;
+      }
+      if (ttEntry.nodeType == NodeType.upperBound && ttEntry.score <= alpha) {
+        // print("TT entry: $ttEntry");
+        return ttEntry.score;
+      }
+    }
+  }
 
   if (!board.followpv && board.allownull) {
     if ((board.nextMove == BLACK_MOVE &&
@@ -207,11 +229,13 @@ int alphabetapvs(int ply, int depth, int alpha, int beta) {
   int pvmovesfound = 0;
 
   for (i = board.moveBufLen[ply]; i < board.moveBufLen[ply + 1]; i++) {
-    selectmove(ply, i, depth, board.followpv);
+    selectmove(ply, i, depth, board.followpv, ttMove);
     Move move = board.moveBuffer[i];
     if (ply == 0) {
       // print("current move: ${move.toAlgebraic()}");
     }
+
+    if (ttMove != null && move.moveInt == ttMove.moveInt) ttMove = null;
     makeMove(move);
 
     if (!isOwnKingAttacked()) {
@@ -232,6 +256,9 @@ int alphabetapvs(int ply, int depth, int alpha, int beta) {
                   .getTosq()] +=
               depth * depth;
         }
+        minimaxTree.addEntry(
+          TTEntry(board.hashkey, move, beta, depth, NodeType.lowerBound),
+        );
         return beta;
       }
 
@@ -247,6 +274,9 @@ int alphabetapvs(int ply, int depth, int alpha, int beta) {
         if (ply == 0) {
           print("current best move: ${move.toAlgebraic()}");
         }
+        minimaxTree.addEntry(
+          TTEntry(board.hashkey, move, val, depth, NodeType.lowerBound),
+        );
       }
     } else {
       unmakeMove(move); // Unmake illegal move
@@ -265,6 +295,13 @@ int alphabetapvs(int ply, int depth, int alpha, int beta) {
               .getTosq()] +=
           depth * depth;
     }
+    minimaxTree.addEntry(
+      TTEntry(board.hashkey, NOMOVE, alpha, depth, NodeType.exact),
+    );
+  } else {
+    minimaxTree.addEntry(
+      TTEntry(board.hashkey, NOMOVE, alpha, depth, NodeType.upperBound),
+    );
   }
 
   //	Checkmate/stalemate detection:
@@ -617,4 +654,14 @@ int repetitionCount() {
     }
   }
   return count;
+}
+
+void rememberPV() {
+  // remember the last PV, and also the 5 previous ones because
+  // they usually contain good moves to try
+  int i;
+  board.lastPVLength = board.triangularLength[0];
+  for (i = 0; i < board.triangularLength[0]; i++) {
+    board.lastPV[i] = board.triangularArray[0][i];
+  }
 }

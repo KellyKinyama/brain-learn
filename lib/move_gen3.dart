@@ -340,6 +340,313 @@ int movegen(int moveBufStartIdx) {
   return legalMovesCount;
 }
 
+/// Generates all legal moves from the current board position.
+/// It first generates pseudo-legal moves (moves that are geometrically valid)
+/// and then filters out any move that would leave the king in check.
+/// Translates `movegen()` from kennyMoveGen.cpp.
+/// Returns the new end index for the move buffer.
+int captgen(int moveBufStartIdx) {
+  int currentMoveIdx = moveBufStartIdx;
+  int from, to;
+  BitMap targetBitmap;
+  BitMap pieceBitmap;
+
+  // Clear the move buffer for the current ply
+  board.moveBufLen[board.endOfGame] = moveBufStartIdx;
+  board.moveBufLen[board.endOfGame + 1] =
+      moveBufStartIdx; // Reset next ply's start
+
+  // Determine the side to move
+  if (board.nextMove == WHITE_MOVE) {
+    // Generate White's moves
+    // =====================================================================
+    // Pawns
+    // =====================================================================
+    pieceBitmap = board.whitePawns;
+    while (pieceBitmap != 0) {
+      from = firstOne(pieceBitmap);
+      pieceBitmap ^= BITSET[from]; // Clear this bit
+
+      // Single pawn push
+      targetBitmap = WHITE_PAWN_MOVES[from] & ~board.occupiedSquares;
+      if (targetBitmap != 0) {
+        to = firstOne(targetBitmap);
+        if (RANKS[to] == 8) {
+          // Promotion
+          addPromotionMoves(from, to, WHITE_PAWN, EMPTY, currentMoveIdx);
+          currentMoveIdx += 4;
+        }
+      }
+
+      // Pawn captures
+      targetBitmap = WHITE_PAWN_ATTACKS[from] & board.blackPieces;
+      while (targetBitmap != 0) {
+        to = firstOne(targetBitmap);
+        targetBitmap ^= BITSET[to];
+        int capturedPiece = board.square[to];
+
+        if (RANKS[to] == 8) {
+          addPromotionMoves(
+            from,
+            to,
+            WHITE_PAWN,
+            capturedPiece,
+            currentMoveIdx,
+          );
+          currentMoveIdx += 4;
+        } else {
+          addMove(from, to, WHITE_PAWN, capturedPiece, EMPTY, currentMoveIdx++);
+        }
+      }
+
+      // En passant captures
+      if (board.epSquare != 0) {
+        if ((WHITE_PAWN_ATTACKS[from] & BITSET[board.epSquare]) != 0) {
+          if (RANKS[from] == 5) {
+            addMove(
+              from,
+              board.epSquare,
+              WHITE_PAWN,
+              BLACK_PAWN,
+              EMPTY,
+              currentMoveIdx++,
+              isEnpassant: true,
+            );
+          }
+        }
+      }
+    }
+
+    // =====================================================================
+    // Knights, Bishops, Rooks, Queens
+    // =====================================================================
+    generatePieceMoves(WHITE_KNIGHT, currentMoveIdx);
+    currentMoveIdx = board.moveBufLen[board.endOfGame + 1];
+    generatePieceMoves(WHITE_BISHOP, currentMoveIdx);
+    currentMoveIdx = board.moveBufLen[board.endOfGame + 1];
+    generatePieceMoves(WHITE_ROOK, currentMoveIdx);
+    currentMoveIdx = board.moveBufLen[board.endOfGame + 1];
+    generatePieceMoves(WHITE_QUEEN, currentMoveIdx);
+    currentMoveIdx = board.moveBufLen[board.endOfGame + 1];
+
+    // =====================================================================
+    // King
+    // =====================================================================
+    pieceBitmap = board.whiteKing;
+    if (pieceBitmap != 0) {
+      from = firstOne(pieceBitmap);
+      targetBitmap = KING_ATTACKS[from] & ~board.whitePieces;
+      while (targetBitmap != 0) {
+        to = firstOne(targetBitmap);
+        targetBitmap ^= BITSET[to];
+        addMove(
+          from,
+          to,
+          WHITE_KING,
+          board.square[to],
+          EMPTY,
+          currentMoveIdx++,
+        );
+      }
+
+      // Castling
+      if ((board.castleWhite & CANCASTLEOO) != 0) {
+        if ((board.occupiedSquares & (BITSET[F1] | BITSET[G1])) == 0) {
+          if (!isAttacked(E1, BLACK_MOVE) &&
+              !isAttacked(F1, BLACK_MOVE) &&
+              !isAttacked(G1, BLACK_MOVE)) {
+            addMove(
+              E1,
+              G1,
+              WHITE_KING,
+              EMPTY,
+              EMPTY,
+              currentMoveIdx++,
+              isCastle: true,
+            );
+          }
+        }
+      }
+      if ((board.castleWhite & CANCASTLEOOO) != 0) {
+        if ((board.occupiedSquares & (BITSET[B1] | BITSET[C1] | BITSET[D1])) ==
+            0) {
+          if (!isAttacked(E1, BLACK_MOVE) &&
+              !isAttacked(D1, BLACK_MOVE) &&
+              !isAttacked(C1, BLACK_MOVE)) {
+            addMove(
+              E1,
+              C1,
+              WHITE_KING,
+              EMPTY,
+              EMPTY,
+              currentMoveIdx++,
+              isCastle: true,
+            );
+          }
+        }
+      }
+    }
+  } else {
+    // Generate Black's moves (similar logic)
+    // =====================================================================
+    // Pawns
+    // =====================================================================
+    pieceBitmap = board.blackPawns;
+    while (pieceBitmap != 0) {
+      from = firstOne(pieceBitmap);
+      pieceBitmap ^= BITSET[from];
+
+      targetBitmap = BLACK_PAWN_MOVES[from] & ~board.occupiedSquares;
+      if (targetBitmap != 0) {
+        to = firstOne(targetBitmap);
+        if (RANKS[to] == 1) {
+          addPromotionMoves(from, to, BLACK_PAWN, EMPTY, currentMoveIdx);
+          currentMoveIdx += 4;
+        } else {
+          addMove(from, to, BLACK_PAWN, EMPTY, EMPTY, currentMoveIdx++);
+          if (RANKS[from] == 7) {
+            targetBitmap =
+                BLACK_PAWN_DOUBLE_MOVES[from] & ~board.occupiedSquares;
+            if (targetBitmap != 0 &&
+                (BITSET[from - 8] & board.occupiedSquares) == 0) {
+              to = firstOne(targetBitmap);
+              addMove(
+                from,
+                to,
+                BLACK_PAWN,
+                EMPTY,
+                EMPTY,
+                currentMoveIdx++,
+                isPawnDouble: true,
+              );
+            }
+          }
+        }
+      }
+
+      targetBitmap = BLACK_PAWN_ATTACKS[from] & board.whitePieces;
+      while (targetBitmap != 0) {
+        to = firstOne(targetBitmap);
+        targetBitmap ^= BITSET[to];
+        int capturedPiece = board.square[to];
+        if (RANKS[to] == 1) {
+          addPromotionMoves(
+            from,
+            to,
+            BLACK_PAWN,
+            capturedPiece,
+            currentMoveIdx,
+          );
+          currentMoveIdx += 4;
+        } else {
+          addMove(from, to, BLACK_PAWN, capturedPiece, EMPTY, currentMoveIdx++);
+        }
+      }
+
+      if (board.epSquare != 0) {
+        if ((BLACK_PAWN_ATTACKS[from] & BITSET[board.epSquare]) != 0) {
+          if (RANKS[from] == 4) {
+            addMove(
+              from,
+              board.epSquare,
+              BLACK_PAWN,
+              WHITE_PAWN,
+              EMPTY,
+              currentMoveIdx++,
+              isEnpassant: true,
+            );
+          }
+        }
+      }
+    }
+
+    // =====================================================================
+    // Knights, Bishops, Rooks, Queens
+    // =====================================================================
+    generatePieceMoves(BLACK_KNIGHT, currentMoveIdx);
+    currentMoveIdx = board.moveBufLen[board.endOfGame + 1];
+    generatePieceMoves(BLACK_BISHOP, currentMoveIdx);
+    currentMoveIdx = board.moveBufLen[board.endOfGame + 1];
+    generatePieceMoves(BLACK_ROOK, currentMoveIdx);
+    currentMoveIdx = board.moveBufLen[board.endOfGame + 1];
+    generatePieceMoves(BLACK_QUEEN, currentMoveIdx);
+    currentMoveIdx = board.moveBufLen[board.endOfGame + 1];
+
+    // =====================================================================
+    // King
+    // =====================================================================
+    pieceBitmap = board.blackKing;
+    if (pieceBitmap != 0) {
+      from = firstOne(pieceBitmap);
+      targetBitmap = KING_ATTACKS[from] & ~board.blackPieces;
+      while (targetBitmap != 0) {
+        to = firstOne(targetBitmap);
+        targetBitmap ^= BITSET[to];
+        addMove(
+          from,
+          to,
+          BLACK_KING,
+          board.square[to],
+          EMPTY,
+          currentMoveIdx++,
+        );
+      }
+
+      if ((board.castleBlack & CANCASTLEOO) != 0) {
+        if ((board.occupiedSquares & (BITSET[F8] | BITSET[G8])) == 0) {
+          if (!isAttacked(E8, WHITE_MOVE) &&
+              !isAttacked(F8, WHITE_MOVE) &&
+              !isAttacked(G8, WHITE_MOVE)) {
+            addMove(
+              E8,
+              G8,
+              BLACK_KING,
+              EMPTY,
+              EMPTY,
+              currentMoveIdx++,
+              isCastle: true,
+            );
+          }
+        }
+      }
+      if ((board.castleBlack & CANCASTLEOOO) != 0) {
+        if ((board.occupiedSquares & (BITSET[B8] | BITSET[C8] | BITSET[D8])) ==
+            0) {
+          if (!isAttacked(E8, WHITE_MOVE) &&
+              !isAttacked(D8, WHITE_MOVE) &&
+              !isAttacked(C8, WHITE_MOVE)) {
+            addMove(
+              E8,
+              C8,
+              BLACK_KING,
+              EMPTY,
+              EMPTY,
+              currentMoveIdx++,
+              isCastle: true,
+            );
+          }
+        }
+      }
+    }
+  }
+
+  // Filter out illegal moves (moves that leave own king in check)
+  int legalMovesCount = moveBufStartIdx;
+  for (int i = moveBufStartIdx; i < currentMoveIdx; i++) {
+    Move currentMove = board.moveBuffer[i];
+    // makeMove(currentMove); // Temporarily make the move
+    // if (!isOwnKingAttacked()) {
+    // If king is not attacked after the move, it's legal
+    board.moveBuffer[legalMovesCount] = currentMove; // Keep the legal move
+    legalMovesCount++;
+    // }
+    // unmakeMove(currentMove); // Unmake the move
+  }
+
+  board.moveBufLen[board.endOfGame + 1] = legalMovesCount;
+  return legalMovesCount;
+}
+
 // Helper to add a standard move
 void addMove(
   int from,
@@ -526,15 +833,33 @@ BOOLTYPE isOtherKingAttacked() {
   // If it's now White's turn, it means Black just moved.
   if (board.nextMove == WHITE_MOVE) {
     // Check if the black king is attacked by white pieces.
-    if (board.blackKing == 0) return true; // King captured, illegal state
-    return isAttacked(firstOne(board.whiteKing), WHITE_MOVE);
+    if (board.whiteKing == 0) return true; // King captured, illegal state
+    return isAttacked(firstOne(board.whiteKing), BLACK_MOVE);
   } else {
     // It's now Black's turn, so White just moved.
     // Check if the white king is attacked by black pieces.
-    if (board.whiteKing == 0) return true; // King captured, illegal state
-    return isAttacked(firstOne(board.blackKing), BLACK_MOVE);
+    if (board.blackKing == 0) return true; // King captured, illegal state
+    return isAttacked(firstOne(board.blackKing), WHITE_MOVE);
   }
 }
+
+// BOOLTYPE isOwnKingAttacked() {
+//   // check to see if we are leaving our king in check
+//   if (board.nextMove == BLACK_MOVE) {
+//     return isAttacked(board.blackKing, WHITE_MOVE);
+//   } else {
+//     return isAttacked(board.whiteKing, BLACK_MOVE);
+//   }
+// }
+
+// BOOLTYPE isOtherKingAttacked() {
+//   // check to see if we are leaving our king in check
+//   if (board.nextMove == BLACK_MOVE) {
+//     return isAttacked(board.whiteKing, board.nextMove);
+//   } else {
+//     return isAttacked(board.blackKing, board.nextMove);
+//   }
+// }
 
 // BOOLTYPE isOtherKingAttacked() {
 //   // check to see if we are leaving our king in check
@@ -548,33 +873,149 @@ BOOLTYPE isOtherKingAttacked() {
 /// Checks if a given square is attacked by any piece of the specified attacking side.
 /// [targetSquare] The square to check for attacks.
 /// [attackingSide] The side performing the attack (WHITE_MOVE or BLACK_MOVE).
-BOOLTYPE isAttacked(int targetSquare, int attackingSide) {
-  if (attackingSide == WHITE_MOVE) {
-    // Check if targetSquare is attacked BY WHITE pieces
-    if ((BLACK_PAWN_ATTACKS[targetSquare] & board.whitePawns) != 0) return true;
-    if ((KNIGHT_ATTACKS[targetSquare] & board.whiteKnights) != 0) return true;
-    if ((KING_ATTACKS[targetSquare] & board.whiteKing) != 0) return true;
-    if ((getRookAttacks(targetSquare, board.occupiedSquares) &
-            (board.whiteRooks | board.whiteQueens)) !=
-        0)
-      return true;
-    if ((getBishopAttacks(targetSquare, board.occupiedSquares) &
-            (board.whiteBishops | board.whiteQueens)) !=
-        0)
-      return true;
-  } else {
-    // Check if targetSquare is attacked BY BLACK pieces
-    if ((WHITE_PAWN_ATTACKS[targetSquare] & board.blackPawns) != 0) return true;
-    if ((KNIGHT_ATTACKS[targetSquare] & board.blackKnights) != 0) return true;
-    if ((KING_ATTACKS[targetSquare] & board.blackKing) != 0) return true;
-    if ((getRookAttacks(targetSquare, board.occupiedSquares) &
-            (board.blackRooks | board.blackQueens)) !=
-        0)
-      return true;
-    if ((getBishopAttacks(targetSquare, board.occupiedSquares) &
-            (board.blackBishops | board.blackQueens)) !=
-        0)
-      return true;
+// BOOLTYPE isAttacked(int targetSquare, int attackingSide) {
+//   if (attackingSide == WHITE_MOVE) {
+//     // Check if targetSquare is attacked BY WHITE pieces
+//     if ((BLACK_PAWN_ATTACKS[targetSquare] & board.whitePawns) != 0) return true;
+//     if ((KNIGHT_ATTACKS[targetSquare] & board.whiteKnights) != 0) return true;
+//     if ((KING_ATTACKS[targetSquare] & board.whiteKing) != 0) return true;
+//     if ((getRookAttacks(targetSquare, board.occupiedSquares) &
+//             (board.whiteRooks | board.whiteQueens)) !=
+//         0)
+//       return true;
+//     if ((getBishopAttacks(targetSquare, board.occupiedSquares) &
+//             (board.whiteBishops | board.whiteQueens)) !=
+//         0)
+//       return true;
+//   } else {
+//     // Check if targetSquare is attacked BY BLACK pieces
+//     if ((WHITE_PAWN_ATTACKS[targetSquare] & board.blackPawns) != 0) return true;
+//     if ((KNIGHT_ATTACKS[targetSquare] & board.blackKnights) != 0) return true;
+//     if ((KING_ATTACKS[targetSquare] & board.blackKing) != 0) return true;
+//     if ((getRookAttacks(targetSquare, board.occupiedSquares) &
+//             (board.blackRooks | board.blackQueens)) !=
+//         0)
+//       return true;
+//     if ((getBishopAttacks(targetSquare, board.occupiedSquares) &
+//             (board.blackBishops | board.blackQueens)) !=
+//         0)
+//       return true;
+//   }
+//   return false;
+// }
+
+BOOLTYPE isAttacked(BitMap targetBitmap, int fromSide) {
+  //  ===========================================================================
+  //  isAttacked is used mainly as a move legality test to see if targetBitmap is
+  //  attacked by white or black.
+  //  Returns true at the first attack found, and returns false if no attack is found.
+  //  It can be used for:
+  //  - check detection, and
+  //  - castling legality: test to see if the king passes through, or ends up on,
+  //  a square that is attacked
+  //  ===========================================================================
+
+  BitMap tempTarget;
+  BitMap slidingAttackers;
+  int to;
+
+  tempTarget = targetBitmap;
+  if (fromSide == BLACK_MOVE) // test for attacks from BLACK to targetBitmap
+  {
+    while (tempTarget != 0) {
+      to = firstOne(tempTarget);
+
+      if (board.blackPawns & WHITE_PAWN_ATTACKS[to] != 0) return true;
+      if (board.blackKnights & KNIGHT_ATTACKS[to] != 0) return true;
+      if (board.blackKing & KING_ATTACKS[to] != 0) return true;
+
+      // file / rank attacks
+      slidingAttackers = board.blackQueens | board.blackRooks;
+      if (slidingAttackers != 0) {
+        if ((RANK_ATTACKS[to][((board.occupiedSquares & RANKMASK[to]) >>
+                    RANKSHIFT[to])] &
+                slidingAttackers) !=
+            0) {
+          return true;
+        }
+        if ((FILE_ATTACKS[to][((board.occupiedSquares & FILEMASK[to]) *
+                        FILEMAGIC[to]) >>
+                    57] &
+                slidingAttackers) !=
+            0) {
+          return true;
+        }
+      }
+
+      // diagonals
+      slidingAttackers = board.blackQueens | board.blackBishops;
+      if (slidingAttackers != 0) {
+        if ((DIAGA8H1_ATTACKS[to][((board.occupiedSquares & DIAGA8H1MASK[to]) *
+                        DIAGA8H1MAGIC[to]) >>
+                    57] &
+                slidingAttackers) !=
+            0) {
+          return true;
+        }
+        if ((DIAGA1H8_ATTACKS[to][((board.occupiedSquares & DIAGA1H8MASK[to]) *
+                        DIAGA1H8MAGIC[to]) >>
+                    57] &
+                slidingAttackers) !=
+            0) {
+          return true;
+        }
+      }
+
+      tempTarget ^= BITSET[to];
+    }
+  } else // test for attacks from WHITE to targetBitmap
+  {
+    while (tempTarget != 0) {
+      to = firstOne(tempTarget);
+
+      if (board.whitePawns & BLACK_PAWN_ATTACKS[to] != 0) return true;
+      if (board.whiteKnights & KNIGHT_ATTACKS[to] != 0) return true;
+      if (board.whiteKing & KING_ATTACKS[to] != 0) return true;
+
+      // file / rank attacks
+      slidingAttackers = board.whiteQueens | board.whiteRooks;
+      if (slidingAttackers != 0) {
+        if ((RANK_ATTACKS[to][((board.occupiedSquares & RANKMASK[to]) >>
+                    RANKSHIFT[to])] &
+                slidingAttackers) !=
+            0) {
+          return true;
+        }
+        if ((FILE_ATTACKS[to][((board.occupiedSquares & FILEMASK[to]) *
+                        FILEMAGIC[to]) >>
+                    57] &
+                slidingAttackers) !=
+            0) {
+          return true;
+        }
+      }
+
+      // diagonals:
+      slidingAttackers = board.whiteQueens | board.whiteBishops;
+      if (slidingAttackers != 0) {
+        if ((DIAGA8H1_ATTACKS[to][((board.occupiedSquares & DIAGA8H1MASK[to]) *
+                        DIAGA8H1MAGIC[to]) >>
+                    57] &
+                slidingAttackers) !=
+            0) {
+          return true;
+        }
+        if ((DIAGA1H8_ATTACKS[to][((board.occupiedSquares & DIAGA1H8MASK[to]) *
+                        DIAGA1H8MAGIC[to]) >>
+                    57] &
+                slidingAttackers) !=
+            0) {
+          return true;
+        }
+      }
+
+      tempTarget ^= BITSET[to];
+    }
   }
   return false;
 }

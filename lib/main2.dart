@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dart:io';
 
 import 'package:brain_learn/search.dart';
+import 'package:brain_learn/tt.dart';
 import 'package:brain_learn/utils.dart';
 
 import 'board.dart';
@@ -56,6 +57,8 @@ void main() {
   dataInit();
   board = Board();
   board.init();
+
+  minimaxTree = TT(4194304);
 
   while (true) {
     // dataInit();

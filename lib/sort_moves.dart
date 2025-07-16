@@ -18,7 +18,7 @@ import 'see.dart'; // For SEE
 /// [i] The starting index in the move buffer for the current ply's moves.
 /// [depth] Current search depth.
 /// [followpv] True if currently following the Principal Variation.
-void selectmove(int ply, int i, int depth, BOOLTYPE followpv) {
+void selectmove(int ply, int i, int depth, BOOLTYPE followpv, Move? ttMove) {
   int j, k;
   int best;
   Move temp = Move();
@@ -29,6 +29,18 @@ void selectmove(int ply, int i, int depth, BOOLTYPE followpv) {
   if (followpv && depth > 1) {
     for (j = i; j < board.moveBufLen[ply + 1]; j++) {
       if (board.moveBuffer[j].moveInt == board.lastPV[ply].moveInt) {
+        // Found the PV move, swap it to the front (index `i`)
+        temp = board.moveBuffer[j];
+        board.moveBuffer[j] = board.moveBuffer[i];
+        board.moveBuffer[i] = temp;
+        return; // PV move is now at the front, no further sorting needed for this call
+      }
+    }
+  }
+
+  if (ttMove != null) {
+    for (j = i; j < board.moveBufLen[ply + 1]; j++) {
+      if (board.moveBuffer[j].moveInt == ttMove.moveInt) {
         // Found the PV move, swap it to the front (index `i`)
         temp = board.moveBuffer[j];
         board.moveBuffer[j] = board.moveBuffer[i];
